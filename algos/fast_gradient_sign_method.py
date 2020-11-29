@@ -75,22 +75,26 @@ class FastGradientSignMethod(EvasionAttack):
         estimator: "CLASSIFIER_LOSS_GRADIENTS_TYPE",
         norm: int = np.inf,
         eps: float = 0.3,
-        targeted: bool = False,
+        eps_step: float = 0.1,
+        targeted: bool = True,
         batch_size: int = 32,
         minimal: bool = False,
     ):
         super().__init__(estimator=estimator)
         self.norm = norm
         self.eps = eps
+        self.eps_step = eps_step
         self._targeted = targeted
         self.batch_size = batch_size
         self.minimal = minimal
 
+
     # This method is usually the trigger method for ART for generating adversarial examples. We rerwite the code to be FGSM, buy
     # we kept the same method name for 1) consistency purposes; 2) in case some ART defense performance evaluation will internally call it.
 
-    def generate(self, x: np.ndarray) -> np.ndarray:
+    def generate(self, x: np.ndarray, aimed_target: np.ndarray = None) -> np.ndarray:
         x_label = get_labels_np_array(self.estimator.predict(x, batch_size = self.batch_size))
+
         # adv_x = self._compute(x, x_label, self.eps,)
 
         adv_x = x.copy()
@@ -98,22 +102,49 @@ class FastGradientSignMethod(EvasionAttack):
         window_slice_amt = int(np.ceil(float(x.shape[0]) / self.batch_size))
 
         # (28, 28, 1)
-        for batch_i in range(window_slice_amt):
-            batch_start_i = batch_i * self.batch_size
-            batch_end_i = (batch_i + 1) * self.batch_size
-            batch_end_i = min(batch_end_i, x.shape[0])
+        # if self.targeted:
+        #     adv_x = self._minimal_perturbation(x, aimed_target)
+        # else:
+        if aimed_target is None:
+            for batch_i in range(window_slice_amt):
+                batch_start_i = batch_i * self.batch_size
+                batch_end_i = (batch_i + 1) * self.batch_size
+                batch_end_i = min(batch_end_i, x.shape[0])
 
-            current_batch = adv_x[batch_start_i: batch_end_i]
-            current_batch_label = x_label[batch_start_i: batch_end_i]
+                current_batch = adv_x[batch_start_i: batch_end_i]
+                current_batch_label = x_label[batch_start_i: batch_end_i]
 
-            batch_grad = self.estimator.loss_gradient(current_batch, current_batch_label)
-            batch_perturb = np.sign(batch_grad) #sign
+                batch_grad = self.estimator.loss_gradient(current_batch, current_batch_label)
+                # batch_grad = self.estimator.loss_gradient(current_batch, target_label)
+                batch_perturb = np.sign(batch_grad) #sign
 
-            current_batch += self.eps * batch_perturb
-            adv_batch = np.clip(current_batch, -1, 1) # tf.clip_by_value()
+                # current_batch += self.eps * batch_perturb
+                current_batch += self.eps * batch_perturb
+                # adv_batch = np.clip(current_batch, -1, 1) # tf.clip_by_value()
+                adv_batch = current_batch # tf.clip_by_value()
 
-            adv_x[batch_start_i: batch_end_i] = adv_batch
+                adv_x[batch_start_i: batch_end_i] = adv_batch
+        else:
+            aimed_target = np.array([aimed_target * len(x)])
+            target_label = get_labels_np_array(self.estimator.predict(aimed_target, batch_size = self.batch_size))
 
+            for batch_i in range(window_slice_amt):
+                batch_start_i = batch_i * self.batch_size
+                batch_end_i = (batch_i + 1) * self.batch_size
+                batch_end_i = min(batch_end_i, x.shape[0])
+
+                current_batch = adv_x[batch_start_i: batch_end_i]
+                current_batch_label = x_label[batch_start_i: batch_end_i]
+
+                # batch_grad = self.estimator.loss_gradient(current_batch, current_batch_label)
+                batch_grad = self.estimator.loss_gradient(current_batch, target_label)
+                batch_perturb = np.sign(batch_grad) #sign
+
+                # current_batch += self.eps * batch_perturb
+                current_batch -= self.eps * batch_perturb
+                # adv_batch = np.clip(current_batch, -1, 1) # tf.clip_by_value()
+                adv_batch = current_batch # tf.clip_by_value()
+
+                adv_x[batch_start_i: batch_end_i] = adv_batch
         return adv_x
-
 
