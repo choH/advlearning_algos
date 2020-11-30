@@ -88,6 +88,10 @@ class FastGradientSignMethod(EvasionAttack):
         self.batch_size = batch_size
         self.minimal = minimal
 
+    def sign_clip_all_element_in_batch(self, batch_grad, batch_size):
+        for i in range(batch_size):
+            batch_grad[i] = np.sign(batch_grad[i])
+        return batch_grad
 
     def generate_targeted_iterative(self, x: np.ndarray, aimed_target: np.ndarray = None, eps_step: float = None) -> np.ndarray:
         if eps_step is None:
@@ -115,7 +119,8 @@ class FastGradientSignMethod(EvasionAttack):
 
             # batch_grad = self.estimator.loss_gradient(current_batch, current_batch_label)
             batch_grad = self.estimator.loss_gradient(current_batch, target_label)
-            batch_perturb = np.sign(batch_grad) #sign
+            # batch_perturb = np.sign(batch_grad) #sign
+            batch_perturb = self.sign_clip_all_element_in_batch(batch_grad, current_batch.shape[0])
 
             ####
             current_i = np.arange(len(current_batch))
@@ -162,9 +167,10 @@ class FastGradientSignMethod(EvasionAttack):
             current_batch = adv_x[batch_start_i: batch_end_i]
             current_batch_true_label = x_label[batch_start_i: batch_end_i]
 
-            batch_grad = self.estimator.loss_gradient(current_batch, current_batch_label)
+            batch_grad = self.estimator.loss_gradient(current_batch, current_batch_true_label)
             # batch_grad = self.estimator.loss_gradient(current_batch, target_label)
-            batch_perturb = np.sign(batch_grad) #sign
+            # batch_perturb = np.sign(batch_grad) #sign
+            batch_perturb = self.sign_clip_all_element_in_batch(batch_grad, current_batch.shape[0])
 
             ####
             current_i = np.arange(len(current_batch))
@@ -216,7 +222,9 @@ class FastGradientSignMethod(EvasionAttack):
 
             batch_grad = self.estimator.loss_gradient(current_batch, current_batch_label)
             # batch_grad = self.estimator.loss_gradient(current_batch, target_label)
-            batch_perturb = np.sign(batch_grad) #sign
+            # batch_perturb = np.sign(batch_grad) #sign
+
+            batch_perturb = self.sign_clip_all_element_in_batch(batch_grad, current_batch.shape[0])
 
             # current_batch += self.eps * batch_perturb
             current_batch += self.eps * batch_perturb
@@ -247,7 +255,10 @@ class FastGradientSignMethod(EvasionAttack):
 
             # batch_grad = self.estimator.loss_gradient(current_batch, current_batch_label)
             batch_grad = self.estimator.loss_gradient(current_batch, target_label)
-            batch_perturb = np.sign(batch_grad) #sign
+            # batch_perturb = np.sign(batch_grad) #sign
+
+
+            batch_perturb = self.sign_clip_all_element_in_batch(batch_grad, current_batch.shape[0])
 
             # current_batch += self.eps * batch_perturb
             current_batch -= self.eps * batch_perturb
