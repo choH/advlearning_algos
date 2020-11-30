@@ -52,9 +52,11 @@ print("Incorrectly classified: {}".format(num-nb_correct_pred))
 
 # x_0_arr = np.array([x_test[0] * num])
 # attacker = FastGradientMethod(classifier, eps=0.1)
-attacker = FastGradientSignMethod(classifier, eps=0.5)
+attacker = FastGradientSignMethod(classifier, eps=10, batch_size = 8)
 # x_test_adv = attacker.generate(x_test[:num]) # non-targeted
-x_test_adv = attacker.generate(x_test[:num], x_test[0]) #targeted
+# x_test_adv = attacker.generate_targeted(x_test[:num], x_test[0]) #targeted
+# x_test_adv = attacker.generate_iterative(x_test[:num]) #iterative non-targeted
+x_test_adv = attacker.generate_targeted_iterative(x_test[:num], x_test[0]) #iterative targeted
 
 
 
