@@ -2,6 +2,9 @@ import tensorflow as tf
 import numpy as np
 import json
 from sys import argv
+from tensorflow.python.framework.ops import disable_eager_execution
+from art.attacks.evasion import FastGradientMethod
+from art.estimators.classification import KerasClassifier
 
 class Dataset:
 
@@ -124,6 +127,7 @@ def get_defensive_distilled_classifier(parameters, raw_training_data, raw_test_d
 
 if __name__ == '__main__':
     if len(argv) >= 2:
+        disable_eager_execution()
         parameters_path = argv[1]
         remove_incorrectly_predicted = False
         if len(argv) >= 3:
@@ -133,14 +137,16 @@ if __name__ == '__main__':
             parameters = json.load(parameters_file)
         raw_training_data, raw_test_data = get_dataset(parameters['dataset'])
         classifier, distilled_classifier = get_defensive_distilled_classifier(parameters, raw_training_data, raw_test_data, remove_incorrectly_predicted)
-        #fast_gradient_method = FastGradientMethod(estimator=classifier, eps=0.2)
         test_dataset = Dataset(raw_test_data[0], raw_test_data[1])
         distilled_test_set = Dataset(raw_test_data[0], convert_to_one_hot(raw_test_data[1], 10))
-        # adversarial_test_images = attack.generate(x=raw_test_data[0])
-        # adversarial_dataset = Dataset(adversarial_test_images, raw_test_data[1])
-        # test_model(classifier, adversarial_dataset)
-        # test_model(distilled_classifier, adversarial_dataset)
-        test_model(classifier, test_dataset)
-        test_model(distilled_classifier, distilled_test_set)
+        art_classifier = KerasClassifier(model=classifier, clip_values=(0, 1), use_logits=False)
+        fast_gradient_method = FastGradientMethod(estimator=art_classifier, eps=0.2)
+        adversarial_test_images = fast_gradient_method.generate(x=test_dataset.images)
+        adversarial_dataset = Dataset(adversarial_test_images, raw_test_data[1], False)
+        distilled_adversarial_dataset = Dataset(adversarial_test_images, convert_to_one_hot(raw_test_data[1], 10), False)
+        test_model(classifier, adversarial_dataset)
+        test_model(distilled_classifier, distilled_adversarial_dataset)
+        #test_model(classifier, test_dataset)
+        #test_model(distilled_classifier, distilled_test_set)
     else:
         print("ERROR: No path to parameters file provided")
