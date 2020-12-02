@@ -16,9 +16,11 @@ if TYPE_CHECKING:
 
 logger = logging.getLogger(__name__)
 
-class FastDeepFool(EvasionAttack):
+class DynamicDeepFool(EvasionAttack):
     """
     This class implements the DeepFool evasion attack, from Moosavi-Dezfooli et al. (2015): https://arxiv.org/abs/1511.04599
+    This implementation has been modified to include a logarithmicly decreasing overshooting adjustment, which allows for
+    better coverage.
     """
     
     attack_params = EvasionAttack.attack_params + [
@@ -232,7 +234,7 @@ class FastDeepFool(EvasionAttack):
         :return: Updated inputs
         """
         inputs1 = adv_inputs[idx_1:idx_2]
-        self.epsilon += 0.01 / (batch_nb + 1)
+        self.epsilon = 0.0001 * np.log(batch_nb + 2)
         inputs2 = (1 + self.epsilon) * (batch - adv_inputs[idx_1:idx_2])
         return inputs1 + inputs2
     
