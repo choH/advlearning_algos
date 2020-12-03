@@ -70,10 +70,6 @@ class PixelThreshold(EvasionAttack):
         """
         y = check_and_transform_label_format(y, self.estimator.nb_classes, return_one_hot=False)
 
-        # Format inputs
-        if np.max(x) <= 1:
-            x = x * 255.0
-
         # Format target labels
         if y is None:
             if self.targeted:
@@ -82,6 +78,10 @@ class PixelThreshold(EvasionAttack):
         else:
             if len(y.shape) > 1:
                 y = np.argmax(y, axis=1)
+        
+        # Format inputs
+        if np.max(x) <= 1:
+            x = x * 255.0
 
         if self.threshold is None:
             logger.info("Attacking with minimal perturbation.")
@@ -98,9 +98,9 @@ class PixelThreshold(EvasionAttack):
                     success, test_image_result = self.attack(image, target_class, threshold, total_iter)
                     if image_result or success:
                         image_result = test_image_result
-                        if success:
-                            end = threshold - 1
-                            self.min_th = threshold
+                    if success:
+                        end = threshold - 1
+                        self.min_th = threshold
                     else:
                         start = threshold + 1
                     if end < start:
@@ -164,6 +164,40 @@ class PixelThreshold(EvasionAttack):
         bounds, initial = self.bounds(image, limit)
 
         # CMAES attack selection
+        adv_x = self.adv_inputs(image, target_class, bounds, initial, limit, total_iter)
+
+        if self.attack_completed(adv_x, image, target_class):
+            return True, self.perturbate(adv_x, image)[0]
+        else:
+            return False, image
+    
+    def adv_inputs(self, image, target_class, bounds, initial, limit, total_iter):
+        """
+        Function prepares adversarial inputs depending on selected strategy
+        """
+
+        def predict_func(x):
+            """
+            Function wraps call for classifier's predicition function
+            """
+            preds = self.estimator.predict(self.perturbate(x, image))[:, target_class]
+
+            if not self.targeted:
+                return preds
+            else:
+                return 1 - preds
+        
+        def callback_func(x, converge=None):
+            """
+            Function traces back attack
+            """
+            if self.ev_strat == 0:
+                if self.attack_completed(x.result[0], image, target_class):
+                    raise Exception("Attack completed early.")
+            else:
+                return self.attack_completed(x, image, target_class)
+
+        # CMAES attack selection
         if self.ev_strat == 0:
             opts = CMAOptions()
             if not self.verbose:
@@ -183,7 +217,7 @@ class PixelThreshold(EvasionAttack):
 
             try:
                 strategy.optimize(
-                    self.predict_func,
+                    predict_func,
                     maxfun=max(1, 400 // len(bounds)) * len(bounds) * 100,
                     callback=callback_func,
                     iterations=1,
@@ -192,11 +226,11 @@ class PixelThreshold(EvasionAttack):
                 if self.verbose:
                     print(exception)
 
-            adv_x = strategy.result[0]
+            return strategy.result[0]
         # Differential evolution attack selection
         else:
             strategy = differential_evolution(
-                self.predict_func,
+                predict_func,
                 bounds,
                 disp=self.verbose,
                 totaliter=total_iter,
@@ -206,44 +240,18 @@ class PixelThreshold(EvasionAttack):
                 callback=callback_func,
                 polish=False,
             )
-            adv_x = strategy.x
-
-        if self.attack_completed(adv_x, image, target_class):
-            return True, self.perturbate(adv_x, image)[0]
-        else:
-            return False, image
+            return strategy.x
     
     def attack_completed(self, adv_x, x, target_class):
         """
         Checks whether the given perturbation `adv_x` for the image `img` is successful.
         """
-        predicted_class = np.argmax(self.estimator.predict(self.perturbate(adv_x, x))[0])
+        pred_class = np.argmax(self.estimator.predict(self.perturbate(adv_x, x))[0])
 
         return bool(
-            (self.targeted and predicted_class == target_class) or
-            (not self.targeted and predicted_class != target_class)
+            (self.targeted and pred_class == target_class) or
+            (not self.targeted and pred_class != target_class)
         )
-    
-    def predict_func(self, x, target_class, image):
-        """
-        Function wraps call for classifier's predicition function
-        """
-        preds = self.estimator.predict(self.perturbate(x, image))[:, target_class]
-
-        if not self.targeted:
-            return preds
-        else:
-            return 1 - preds
-    
-    def callback_func(self, x, target_class, converge, image):
-        """
-        Function traces back attack
-        """
-        if self.ev_strat == 0:
-            if self.attack_completed(x.result[0], image, target_class):
-                raise Exception("Attack completed early.")
-        else:
-            return self.attack_completed(x, image, target_class)
     
     def init_img(self, row, col, chan):
         self.img_rows = self.estimator.input_shape[row]
@@ -293,15 +301,16 @@ class PixelAttack(PixelThreshold):
         super().__init__(classifier, threshold, ev_strat, targeted, verbose)
         self.type_attack = 0
 
-    def perturbate(self, p: np.ndarray, img: np.ndarray) -> np.ndarray:
+    def perturbate(self, x: np.ndarray, img: np.ndarray) -> np.ndarray:
         """
-        Perturbs the given image `img` with the given perturbation `p`.
+        Perturbs the given image `img` with the given perturbation `x`.
         """
-        if p.ndim < 2:
-            p = np.array([p])
-        imgs = np.tile(img, [len(p)] + [1] * (p.ndim + 1))
-        p = p.astype(int)
-        for adv, image in zip(p, imgs):
+        if x.ndim < 2:
+            x = np.array([x])
+
+        imgs = np.tile(img, [len(x)] + [1] * (x.ndim + 1))
+        x = x.astype(int)
+        for adv, image in zip(x, imgs):
             split = np.split(adv, len(adv) // (2 + self.img_channels))
             for pixel in split:
                 x_pos, y_pos, *rgb = pixel
@@ -334,12 +343,12 @@ class PixelAttack(PixelThreshold):
                     continue
 
             min_bounds = [0, 0]
-            for _ in range(self.img_channels):
+            for i in range(self.img_channels):
                 min_bounds += [0]
 
             min_bounds = min_bounds * limit
             max_bounds = [self.img_rows, self.img_cols]
-            for _ in range(self.img_channels):
+            for i in range(self.img_channels):
                 max_bounds += [255]
 
             max_bounds = max_bounds * limit
