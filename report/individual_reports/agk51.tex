@@ -1,0 +1,47 @@
+\documentclass[../article.tex]{subfiles}
+
+\begin{document}
+
+The main algorithm that I focused on for this report was Defensive Distillation.
+Defensive distillation is a way to train a deep neural network classifier with the goal of better defending against
+adversarial examples that was first proposed in the paper \emph{Distillation as a Defense to Adversarial Perturbations against Deep Neural Networks} by Papernot et all.
+The main idea behind Defensive distillation is that Deep Neural Networks are susceptible to adversarial examples because they make overly confident predictions when a sample has elements of two different classes.
+Defensive Distillation attempts to deal with this by using a classifier that is trained on soft labels instead of hard labels. Soft labels provide probabilities that an example belongs to each of the classes in a model rather than identifying a specific lass the example belongs to.
+
+Distillation is a technique that was created in order to run Deep Neural Networks on devices with lower computational power by reducing the size of the network. The idea is that hard labels can be used to train a large neural network, and then this classifier can be used to create soft labels to train a smaller neural network with the goal of obtaining an accuracy similar to the original larger classifier. Defensive distillation uses a variation of this technique in order to create a deep neural network that can better classify adversarial examples.
+
+ The output of the neural network used in distillation must be a Softmax layer with a temperature parameter. The output of a softmax layer is as follows
+
+\[ F(X) = \left[\frac{e^{z_i(X) / T}}{\sum_{l=0}^{N-1}e^{z_l(X) / T}}\right]_{i \in 0 \dots N - 1} \]
+
+where $Z(X)$ is the output of the previous layer and $F(X)$ is an output that corresponds to a vector with a probability for each class. The temperature value $T$ in the Softmax layer determines how confident the classifier will be about the most probable class. A high temperature value will cause the different class probabilities to be closer together whereas a low temperature will cause the most probable classes to have  a probability further apart from the less probable classes. This is because the exponent is divided by the temperature and reducing the exponents value by the same amount for all classes will cause the output values to be closer to each other
+
+In Defensive Distillation a neural network where the last layer is a softmax layer is trained using a dataset with hard labels. The temperature of the Softmax layer is set to a high value (something greater than 1) so that the classifier will output values with larger values for each class. This means that the output will emphasis ambiguities in certain examples that may have similarities to a different class. The examples are then passed through the trained neural network at the same high temperature and the output of the classifier is recorded as a soft label for that example. Whereas in distillation a smaller model is trained using the soft labels, in defensive distillation the goal is a classifier more resilient against adversarial examples rather than a performant one so the second classifier is of the same size as the first one. When this second classifier is trained using the soft labels it the temperature of the Softmax label is set to a high value. When it is then being tested the Temperature is lowered to 1 so that the classifier outputs more confident probabilities.
+
+Theoretical justifications presented in the paper as to why defensive distillation works against adversarial examples include that a higher temperature reduces the model's sensitivity to small perturbations in the input to the classifier, and that defensive distillation improves the generizability of the classifier outside of the training sample.
+
+The researchers were able to use defensive distillation to lower the success rate of adversarial examples from 95.89\% to 0.45\% on the MNIST dataset and from 87.89\% to 5.11\% on the CIFAR10 dataset. The distillation did result in a moderate decrease in the accuracy on non-adversarial examples with a 1.28\% decrease on the MNIST dataset and a 1.37\% decrease on the CFAIR10 dataset. The models performed better against adversarial examples at higher distillation temperatures with the temperature of 100 (the highest that they tested) performing the best. They also show that defensive distillation increases the robustness of the classifier produced.
+
+The second paper I read finds a way to revert adversarial examples into non-adversarial examples before feeding them into a classifier instead of training the classifier to handle adversarial images. This paper was \emph{Defense-GAN: Protecting Classifiers Against Adversarial Attacks Using Generative Models} by Samangouei et all. and its idea is to use Generative Adversarial Networks to help protect Deep Neural Networks against adversarial examples.
+
+Generative Adversarial Networks consist of two networks: $D$ and $G$. $D$ is a binary classifier for examples $x$, and $G$ learns how to craft examples with the dimensionality of $x$ from a random vector $z$. $G$ learns to map $z$ to $G(z)$ similar to $x$ and $D$ then learns how to distinguish between $x$ and $G(z)$. In the paper generative networks were trained with a loss function based on Wasserstein distance which is as follows:
+
+\[ \min_G \max_D V_w(D, G) = \mathbf{E}_{x \sim p_data(x)}[D(x)] -  \mathbf{E}_{x \sim p_z}[D(G(z))]\]
+
+Feeding non-adversarial examples through the generative network should barely effect the examples so long as $p_g$ converges to $p_{data}$. This means that legitimate example will not be altered by being fed through the network while adversarial example will be altered.
+
+Defense-GAN works by finding an input $z^*$ to the GAN that will match the original input $x$ as closely as possible. $G(z^*)$ is what will then actually be fed into the classifier. The exact expression to be minimized is
+
+\[ \min_z \|G(z) - x\|^2_2\]
+
+Gradient descent is then run on this function with random restarts to find $z^*$
+
+The reason this approach is useful is because it assumes very little about the type of attack or the classifier that is being used. The classifier used to classify the images can also be trained using either the original training set or images generated by the generative network.
+
+The researchers tested different combinations of attacks and defenses on the MNIST dataset as well as the Fashion-MNIST data set. The types of attacks included both black box and white box attacks. Defense-GAN performed well on the MNIST data set on many different types of attacks and classifiers, while other types of defenses tested performed well against only certain types of attacks. The performance from training the classifier on the original images and the images from the Generative Adversarial Network were both comparable. Increasing the number of random restarts increased the classification accuracy. The number of iterations of gradient descent generally increased the accuracy but against adversarial examples high numbers of iterations eventually decreased the accuracy.
+
+Defense-GAN can also be used to detect the use of adversarial examples. This is because examples with larger perturbations from the original examples will be further away from the image produced by the generative network than unchanged images. Thus the authors propose used the mean squared error of the original image and the image output by the GAN to detect attacks.
+
+Two difficulties the authors note that may need to be considered when deploying defense-GAN are the training of adversarial networks as well as the choice of parameters. They note that there are still challenges in training GANs and the choices of $L$, the number of gradient descent iterations, and $R$, the number of random restarts, are both important factors in the effectiveness of defense-GAN.
+
+\end{document}
