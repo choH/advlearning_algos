@@ -20,11 +20,23 @@ tf.compat.v1.logging.set_verbosity(tf.compat.v1.logging.ERROR)
 
 print(tf.__version__)
 
-(x_train, y_train), (x_test, y_test), min_, max_ = load_dataset('mnist')
+# (x_train, y_train), (x_test, y_test), min_, max_ = load_dataset('mnist')
+# path = get_file('mnist_cnn_original.h5', extract=False, path=ART_DATA_PATH,
+#                 url='https://www.dropbox.com/s/p2nyzne9chcerid/mnist_cnn_original.h5?dl=1')
+# classifier_model = load_model(path)
 
-path = get_file('mnist_cnn_original.h5', extract=False, path=ART_DATA_PATH,
-                url='https://www.dropbox.com/s/p2nyzne9chcerid/mnist_cnn_original.h5?dl=1')
+
+# (x_train, y_train), (x_test, y_test), min_, max_ = load_dataset('mnist')
+# path = get_file('mnist_cnn_original.h5', extract=False, path=ART_DATA_PATH,
+#                 url='https://www.dropbox.com/s/p2nyzne9chcerid/mnist_cnn_original.h5?dl=1')
+# classifier_model = load_model(path)
+
+(x_train, y_train), (x_test, y_test), min_, max_ = load_dataset('cifar10')
+path = get_file('cifar_resnet.h5',extract=False, path=ART_DATA_PATH,
+                url='https://www.dropbox.com/s/ta75pl4krya5djj/cifar_resnet.h5?dl=1')
 classifier_model = load_model(path)
+
+
 classifier = KerasClassifier(clip_values=(min_, max_), model=classifier_model, use_logits=False)
 
 num = 100
@@ -52,7 +64,7 @@ print("Incorrectly classified: {}".format(num-nb_correct_pred))
 
 # x_0_arr = np.array([x_test[0] * num])
 # attacker = FastGradientMethod(classifier, eps=0.1)
-attacker = FastGradientSignMethod(classifier, eps=10, batch_size = 8)
+attacker = FastGradientSignMethod(classifier, eps=0.5, batch_size = 8)
 # x_test_adv = attacker.generate(x_test[:num]) # non-targeted
 # x_test_adv = attacker.generate_targeted(x_test[:num], x_test[0]) #targeted
 # x_test_adv = attacker.generate_iterative(x_test[:num]) #iterative non-targeted

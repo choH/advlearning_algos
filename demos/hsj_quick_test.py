@@ -18,12 +18,16 @@ warnings.filterwarnings('ignore')
 
 
 
-(x_train, y_train), (x_test, y_test), min_, max_ = load_dataset('mnist')
+# (x_train, y_train), (x_test, y_test), min_, max_ = load_dataset('mnist')
+# path = get_file('mnist_cnn_original.h5', extract=False, path=ART_DATA_PATH,
+#                 url='https://www.dropbox.com/s/p2nyzne9chcerid/mnist_cnn_original.h5?dl=1')
+# classifier_model = load_model(path)
 
-
-path = get_file('mnist_cnn_original.h5', extract=False, path=ART_DATA_PATH,
-                url='https://www.dropbox.com/s/p2nyzne9chcerid/mnist_cnn_original.h5?dl=1')
+(x_train, y_train), (x_test, y_test), min_, max_ = load_dataset('cifar10')
+path = get_file('cifar_resnet.h5',extract=False, path=ART_DATA_PATH,
+                url='https://www.dropbox.com/s/ta75pl4krya5djj/cifar_resnet.h5?dl=1')
 classifier_model = load_model(path)
+
 classifier = KerasClassifier(clip_values=(min_, max_), model=classifier_model, use_logits=False)
 
 num = 100
