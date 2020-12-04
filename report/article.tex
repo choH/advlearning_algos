@@ -116,23 +116,306 @@ We as a group of five have looked into the field of adversarial machine learning
 
 \section{Comparative Study and Discussion}
 
+In this section, we will present a comparative study between some algorithms (and their comparable extensions) we implemented.
+
 \subsection{Overview}
-\subsection{Attack Algorithms}
+
+\subsubsection{Datasets and Sample Selections}
+
+For the tesing datasets, we opted to use \textit{MINIST} \cite{cite:minist} and \textit{CIFAR-10} \cite{cite:cifar10}. In short, \textit{MINIST} is a database of handwritten digits and \textit{CIFAR-10} is a database for tiny images, as demonstrated below in  [\figurename{\ \ref{MINIST}}] and [\figurename{\ \ref{CIFAR}}].
+
+
+\begin{figure}[H]
+\minipage{0.4\textwidth}
+    \centering
+    \includegraphics[width = \textwidth]{{fig/MINIST.png}}
+    \caption{An selection of \textit{MINIST} database}
+    \label{MINIST}
+\endminipage\hfill
+\minipage{0.4\textwidth}
+    \centering
+    \includegraphics[width =\textwidth]{{fig/CIFAR10.png}}
+    \caption{An selection of \textit{CIFAR-10} database}
+    \label{CIFAR}
+\endminipage
+\end{figure}
+
+\noindent Our decision of using these two datasets are base on the consideration of:
+\begin{itemize}
+    \item Both datasets are pre-labeled and have pretrained model available for use. So we may save time on training the victim model(s), and also have some consistent baselines to refer to.
+    \item Both datasets are lightweight in terms of image resolutions, so when evaluating computational-heavy algorithms (e.g. \ilc{Hope Skip Jump}), we are able to get the experiments data either locally or with minimum use of cloud services.
+    \item Having ORC and image classifying tasks (in general) together can be a very fair coverage of the actual applications of adversarial learning.
+    \item \textit{MINIST} specifically has a close-to-pure background color, which is a great for human to evaluate as sometime the perturbation on a colorful picture can be unnoticeable to human eyes.
+    \item The toolbox of choice \textit{adversarial-robustness-toolbox} a.k.a \ilc{ART} have wrapper methods around these two models, and can load their pretained models as \ilc{ART}'s victim classifiers (we have specifically inquired Dr. Ray that it is ok to \ilc{import} this kind of facilities).
+\end{itemize}
+
+We have thought about using a third database like \textit{ImageNet} or \textit{IRIS}, but with the combinations of attacks and defenses algorithms we already have a very heavy experiments workload. So we opted to only use these two. However, considered the image quality of \textit{MINIST} and \textit{CIFAR-10} are rather on the low side, we used some \textit{ImageNet} images to demo our work and concepts.
+
+\subsubsection{ART}
+
+\textit{adversarial-robustness-toolbox}\cite{cite:art} a.k.a \ilc{ART} is an IBM-sponsered library that provides tools for necessary adversarial learning experiments. We have utlized \ilc{ART}'s facilities on loading dataset, wrapping victim classifiers, and piplining attack and defense algorithms together. We cannot finish this project without this library, so much credit to them.
+
+\subsubsection{Metrics}
+
+As we are not doing binary classifications, \textit{accuracy} will be our top piority. This is also the case for general goal of adversarial learning, as we either what to attack the model to lower its \textit{accuracy}, or we want to defend from an attack with increased robustness -- thus higher  \textit{accuracy}.\newline
+
+\noindent However, another important aspect of adversarial learning is, in most of the cases, we want the our attack image to be only ``adversarial'' to a computer model, but not to human eyes. This is first because without such restraint we may simply swap a dog picture with a cat picture and call it a successful attack, which will make the task meaningless. Second, it is because for most of the time we want our attack to be ``stealthy'' -- and a collection of pixels noises is simply not so much of that.
+
+\begin{figure}[H]
+\minipage{0.25\textwidth}
+    \includegraphics[width = \textwidth]{{fig/google_fgsm_1.png}}
+\endminipage\hfill
+\minipage{0.25\textwidth}
+    \includegraphics[width = \textwidth]{{fig/google_fgsm_2.png}}
+\endminipage\hfill
+\minipage{0.25\textwidth}
+    \includegraphics[width = \textwidth]{{fig/google_fgsm_3.png}}
+\endminipage\hfill
+\minipage{0.25\textwidth}
+    \includegraphics[width = \textwidth]{{fig/google_fgsm_4.png}}
+\endminipage
+\caption{A Labrador Retriver with different levels of perturbations}
+\label{fgsm_dog}
+\end{figure}
+
+Thus, keeping the ``semantic'' of the original image is important in terms of making adversarial examples. However we must have a way to quantify such perturbations -- as it can be very hard to tell like shown in [\figurename{\ \ref{fgsm_dog}}] \cite{cite:google_fgsm} -- so that we can numerically conclude and justify the claim if a image has lost it semantic (and by how much).
+
+The metrics we found is \textit{perturbation budget}\cite{cite:perb_budget}, it defined as:
+
+\begin{equation}
+     \epsilon = || x_{\text{adv}} - x ||
+     \label{perb_budget_equation}
+\end{equation}
+
+where $epsilon$ in [Equation \ \ref{perb_budget_equation}] is the \textit{perturbation budget}. However, we have different choices on calculating the distance metrics. In this case, we opted to use $L_2$ and $L_{\infty}$ as they represent the \textsc{Euclid} distance and maximum magnitude between pixels -- which covered the perturbation of a picture both holistically and ``extremely.''
+
+Specifically in practice, we calcualte the $L_2$ and $L_{\infty}$ of two images channel by channel then add them together. The principle is we will want the these numbers to be as small as possible, as long as the adversarial image we created still have an adversarial affect to a model. Note if an algorithm is iterative, a smaller \textit{perturbation budget} also means smaller computation cost -- as less iteration were done.\newline
+
+\noindent Another thing that maybe worth mentioning is since we used pretained victim model, we didn't do anything like N-fold cross validation as we are seeking effects out of a trained model, but not to train one (maybe except \ilc{Neural Cleanse} as it does retain the model). But we do average our trials to make sure our experiment results are reproducable.
+
+
+\subsubsection{Adversarial Rivalry}
+
+We have implemented and experimented multiple attack and defense algorithms, but not all of them can be compared together due to various reasons. In our cases, we opted to not to have some algorithms compared together, or even not to include some algorithm in our comparative study.
+
+We opted to compare \ilc{Fast Gradient Sign Method} (non-targeted, with one-shot and iterative implementions), \ilc{Hop Skip Jump}, \ilc{DeepFool} (and \ilc{Dynamic DeepFool} -- an extension implemented by David) together as they are all the non-targed evasion algorithm we implemented. We opted to not include \ilc{Backdoor} in this set of comparsion as it evasion attacks were done in the assumption of having a trained model, it doesn't make sense to have posioning -- which can alter the training set of a model -- to be part of the comparsion. Similarily, the two targeted extensions \ilc{FGSM} is excluded from this comparsion as in this context it is the magnitude of decrease of model \textit{accuracy} in general we care about, but not which exact label the model most classifies to.
+
+Likewise, we opted to not compare any other algorithm except \ilc{Backdoor} to against \ilc{Neural Cleanse}, as: Minyang please input here.
+
+Also we are not comparing different defense algorithms against a same attack algorithm. This is not because we are not interested in the performance difference between defense algorithm. It is simply because we have already elimited \ilc{Neural Cleanse} due to its retrain nature; and for the other two remained defense algorithm \ilc{Binary Input Detector} and \ilc{Spatial Smoothing}, the former one is designed to recognize and flag an adversarial image, where the latter is to increase model robustness so that it can better classified adversarially perturbed images -- so they can't be compared.
+
+
+\subsection{Attack Algorithms}\label{attack_algo}
+
+Note \ilc{I-FGSM} represents (non-targted, one-shot) \ilc{Iterative Fast Gradient Sign Method};  \ilc{D-DeepFool} represents \ilc{Dynamic DeepFool}. The \ilc{FGSM} is running with params being \ilc{batch\_size = 32, eps = 3}, and the \ilc{I-FGSM} is running on the same setting with \ilc{eps\_step = 0.05} as we have found in Henry's individual report with \ilc{eps\_step > 0.05} we might ``overshot'' ourself. \newline
+
+\ilc{Hop Skip Jump} a.k.a. \ilc{HSJ} is a very computational-heavy algorithm. When possible, we will use \ilc{max\_iter=64, max\_eval=1000, init\_eval=100} which is close to the authors suggested setting (except the authors suggests \ilc{max\_eval = 100000} which is impossible to replicate with our resource). But often time we are limited for \ilc{max\_iter=8, max\_eval=100, init\_eval=10}. \newline
+
+Unless specifically addressed, the base line model is a the pretrained model of dataset wrapped in \ilc{ART}'s \ilc{KerasClassifier}.
+
 \subsubsection{Evasion}
+
+
+\begin{figure}[H]
+    \centering
+    \includegraphics[width = 0.8\textwidth]{{fig/attack_minist_acc.png}}
+    \caption{Accuracy comparsion of evasion attack algorithms on \textit{MINIST}}
+    \label{attack_minist_acc}
+\end{figure}
+
+By observating  [\figurename{\ \ref{attack_minist_acc}}] it can be clearly tell that the presented algorithms are in three different ``levels.'' With \ilc{HSJ} showing the best performance and \ilc{DeepFool} and \ilc{D-DeepFool} showing identical performance, the only interesting question left is if \ilc{FGSM} is significantly different from \ilc{I-FGSM}.
+
+We then try to find the $95 \%$ CI of $E_{\ilc{FGSM}} - E_{\ilc{I-FGSM}}$ with a null hypothesis of they have no difference. Note the sample size of tested \textit{MINIST} is $10000$.
+
+\begin{align*}
+    F &= 0.299 - 0.2881 \\
+    &= 0.0109 \\
+    V(F) &= 0.299(1-0.299)/10000 + 0.2881(1-0.2881)/10000 \\
+    &= 0.000041469739\\
+    \Rightarrow \sigma &= 0.006439700226 \\
+    95 \% \text{CI} &= 0.0109 \pm 1.96 \cdot 0.006439700226 = (-0.001721812443, 0.02352181244)
+\end{align*}
+
+With $0$ lies in the $95 \%$ CI, we can't reject the null hypothesis and \ilc{FGSM} and \ilc{I-FGSM} are not different in terms of accuracy performance in this experiment. This is consistent to our understanding of the algorithms as \ilc{I-FGSM} is suppose to be the iterative version of \ilc{FGSM}, it performed slightly ``better'' in number on \textit{adversarial acc} probably just because the adversarial image is generated closer to the decision boundaries of the model and therefore a bit more ``confusing'' -- we will analysize this issue closer with the following budget graph [\figurename{\ \ref{attack_minist_budget}}].
+
+\begin{figure}[H]
+    \centering
+    \includegraphics[width = 0.8\textwidth]{{fig/attack_minist_budget.png}}
+    \caption{Budget comparsion of evasion attack algorithms on \textit{MINIST}}
+    \label{attack_minist_budget}
+\end{figure}
+
+By investigating the [\figurename{\ \ref{attack_minist_budget}}] we may confirm our thinking that \ilc{I-FGSM} generated adversarial examples are less aggressive (and thus closer to the decision boundaries), as it has a lower mean $L_2$ and mean $L_\infty$ (we can't do $95 \%$ CI on this as the sample size has no bearing to the perturbation budget).\newline
+
+In our pervious observation on [\figurename{\ \ref{attack_minist_acc}}] we said \ilc{HSJ} has the best performance in terms \textit{adversarial acc}. Now we know that \ilc{HSJ} did such with minimum perturbation budget spent (by having the lowrest mean $L_2$ and mean $L_\infty$ across the board). However, the cost of doing this is very high, the runtime of \ilc{HSJ} is close $100$ times of other algorithm. These observations are also consistent to our understanding of \ilc{HSJ}, as it is doing \textit{binary search} until it crosses the decision boundary -- so it can perserve a high amount semantic from the original image, at the cost of spending a lot of time to find such image.\newline
+
+David please explain a bit on DeepFool as why it perturbed a huge amount while performed not so well, and maybe also why its $L_\infty$ is a lot higher than $L_2$.
+
+\begin{figure}[H]
+    \centering
+    \includegraphics[width = 0.8\textwidth]{{fig/attack_cifar10_acc.png}}
+    \caption{Accuracy comparsion of evasion attack algorithms on \textit{CIFAR-10}}
+    \label{attack_cifar10_acc}
+\end{figure}
+
+We then repeated the same experiment on $100000$ \textit{CIFAR-10} examples and got the result of [\figurename{\ \ref{attack_cifar10_acc}}]. This time we have a different outcome between \ilc{DeepFool} and \ilc{D-DeepFool}, so we will analysis $E_{\ilc{FGSM}} - E_{\ilc{I-FGSM}}$, $E_{\ilc{DeepFool}} - E_{\ilc{D-DeepFool}}$, and $E_{\ilc{I-FGSM}} - E_{\ilc{HSJ}}$ (as they are closer this time). With an aid of a script and a null hypothesis of having no difference, we have:
+
+\begin{itemize}
+    \item  $95 \%$ CI of $E_{\ilc{FGSM}} - E_{\ilc{I-FGSM}}$: \ilc{(0.031694853818380074, 0.04850514618161992)}, rejected.
+    \item  $95 \%$ CI of $E_{\ilc{DeepFool}} - E_{\ilc{D-DeepFool}}$: \ilc{(-0.006278442326911505, 0.010278442326911509)}, cannot rejected.
+    \item  $95 \%$ CI of $E_{\ilc{I-FGSM}} - E_{\ilc{HSJ}}$: \ilc{(0.07325244583218875, 0.08434755416781124)}, rejected.
+\end{itemize}
+
+It is a bit suprisized to see the null hypothesis of $E_{\ilc{FGSM}} - E_{\ilc{I-FGSM}} = 0$ can be rejected. This is probably because \textit{CIFAR-10} has more label catagories where \textit{MINIST} only has 10 digits, thus decision boundaries between (more) different labels to be closer. The observation of having an overall lower \textit{benign acc} also confirms this assumption. We will look into it again in the following budget analysis [\figurename{\ \ref{attack_cifar10_budget}}].
+
+Also, with $E_{\ilc{I-FGSM}} - E_{\ilc{HSJ}} = 0$ rejected, we may say that \ilc{HSJ} indeed performs better than \ilc{I-FGSM}.
+
+\begin{figure}[H]
+    \centering
+    \includegraphics[width = 0.8\textwidth]{{fig/attack_cifar10_budget.png}}
+    \caption{Budget comparsion of evasion attack algorithms on \textit{CIFAR-10}}
+    \label{attack_cifar10_budget}
+\end{figure}
+
+The budget analysis [\figurename{\ \ref{attack_cifar10_budget}}] comfirms our thinking as the perturbation budgets are larger acrossed the board in comparision to \textit{MINIST}. Also all other observation made from the \textit{MINIST} budget graph [\figurename{\ \ref{attack_minist_budget}}] are also true in this \textit{CIFAR-10} budget graph.
+
 \subsubsection{Poisoning}
+Please refer to Section \ref{defense_transformer} as we have only one poisoning attack algorithm and want to analysize it in combination with its designated defense: \ilc{Neural Cleanse}.
+
+\subsubsection{Conclusion}
+
+We have made the obersvation of \ilc{HSJ} is having the best \textit{accuracy} performance. With \ilc{HSJ} and \ilc{I-FGSM} being more successful on controlling their perturbation budget -- due to their iterative nature -- and therefore probably are overall more reliable attacks as they can generate more effective (i.e. more confuse to a modal) adversarial examples while preserve better semanic of the original benign image (i.e. the pertubation is less obvious to human's eyes).
+
+Note we also discovered \ilc{I-FGSM} and \ilc{HSJ} are computationally-heavy (especially the latter), due to their iterative nature and the need of many binary search operations in the case of \ilc{HSJ}. So it is suspected this sort of attacks can be better prevented by implementing flow control mechanism of the model \ilc{predict()} API -- as without enough steps of iterations, these two algorithms won't easily find the decision boundary of the model.\newline
+
+\ilc{DeepFool} and \ilc{D-DeepFool} have shown very similar performance across this section of experiments and their performance are considerably lacking both in terms of \textit{adversarial acc} and \textit{perturbation budget}. David, please again summarize a bit here.
+
 \subsection{Defense Algorithms}
 
+The setup of algorithms and environment remain consistent to Section \ref{attack_algo}, with the exception of we ran \ilc{HSJ} with the params of \ilc{max\_iter=8, max\_eval=100, init\_eval=10} due to resource concern.\newline
 
 
+\noindent Unless specifically addressed, the base line model is a the pretrained model of dataset wrapped in \ilc{ART}'s \ilc{KerasClassifier}; and the testing sample size of datasets are $500$ (per each databset).
 
-% % % % % % % % % % % % % % % % % % % % % % % % % % % % % % % % % %
-% % % % % % % % % % % % % % % % % % % % % % % % % % % % % % % % % %
-% % % % % % % % % % % % % % % % % % % % % % % % % % % % % % % % % %
-% \section{References}
-% \nocite{*}
-% \raggedright
-% \bibliography{references.bib}
-% \bibliographystyle{plain}
+\subsubsection{Detector}
+
+\begin{figure}[H]
+    \centering
+    \includegraphics[width = 0.8\textwidth]{{fig/bd_minist_acc.png}}
+    \caption{Effectiveness comparision of evasion attack algorithms v. \ilc{Binary Input Detector} on \textit{MINIST}}
+    \label{bd_minist_acc}
+\end{figure}
+
+\ilc{Binary Input Detector} a.k.a \ilc{BID} is algorithm that detects and flags adversarial examples out of a dataset. Since the workflow of our experiment is to get the \textit{benign acc} with original benign examples, then make them into adversarial exmaples to get the \textit{adversarial acc}, then we ask \ilc{BID} to run on both the benign example set and the adversarial example set.
+
+In the adversarial example set, \ilc{BID} should aim for a $100 \%$ as every input example of the set is adversarial; vice versa, \ilc{BID} should aim for a $0 \%$ in the benign example set as none of the input exmaple are adversarial -- we times this benign flagging percentage with an $-1$ do show that it is a negative impact.\newline
+
+\noindent First, we may tell there is much difference on \textit{adversarial flag} except for \ilc{D-DeepFool}, as we have $95 \%$ of $E_{\ilc{HSJ}} - E_{\ilc{FGSM}}$ (the biggest difference on \textit{adversarial flag} excluding \ilc{D-DeepFool}) to be \ilc{(-0.027824596689983806, 0.04382459668998382)}, so we cannot reject the null hypothesis of \ilc{FGSM, I-FGSM, HSJ, DeepFool} having no significant difference on \textit{adversarial flag}.\newline
+
+Thus, the interest is left to \textit{benign flag}, we cannot rejected $E_{\ilc{FGSM}} - E_{\ilc{I-FGSM}} = 0$ by having a  $95 \%$ of \ilc{(-0.0030318578671047047, 0.019031857867104707)}. But there are significant differences between \ilc{HSJ, DeepFool, D-DeepFool} on \textit{benign flag} as we have tested the $95 \%$ of $E_{\ilc{HSJ}} - E_{\ilc{FGSM}} = 0$ (second smallested difference on \textit{benign flag}) to be \ilc{(0.22750277615440784, 0.3084972238455922)} on \textit{benign flag}. We think this can be better explained by investigating the [\figurename{\ \ref{bd_minist_budget}}] graph.
+
+
+\begin{figure}[H]
+    \centering
+    \includegraphics[width = 0.8\textwidth]{{fig/bd_minist_budget.png}}
+    \caption{Budget comparision evasion attack algorithms v. \ilc{Binary Input Detector} on \textit{MINIST}}
+    \label{bd_minist_budget}
+\end{figure}
+
+By investigating the [\figurename{\ \ref{bd_minist_budget}}] graph, it can be tell there is a clearly correlation between the \textit{pertubation budget} and the \textit{adversarial flag} or \textit{benign flag} (e.g., \ilc{D-DeepFool}). This is in fact very intuitive as less \textit{pertubation budget}  means the generated adversarial examples have perserved more semantics or their benign origins, thus making \ilc{BID} hard to distinguish wheather an example is benign or not.
+
+However, it remainds unknow why \ilc{D-DeepFool} has a much lesser \textit{benign flag} and \textit{adversarial flag} in comparision to \ilc{DeepFool}. David please have some input here thanks.
+
+
+\begin{figure}[H]
+\minipage{0.6\textwidth}
+    \includegraphics[width=0.8\textwidth]{{fig/bd_cifar10_acc.png}}
+    \caption{Effectiveness comparision}
+    \label{bd_cifar10_acc}
+\endminipage\hfill
+\minipage{0.6\textwidth}
+    \includegraphics[width=0.8\textwidth]{{fig/bd_cifar10_budget.png}}
+    \caption{Budget comparision}
+    \label{bd_cifar10_budget}
+\endminipage
+\caption*{Evasion attack algorithms v. \ilc{Binary Input Detector} on \textit{CIFAR-10}}
+\end{figure}
+
+
+Our discovary continues uphold on the \textit{CIFAR-10} dataset as algorithms with lower \textit{pertubation budget} gets flagged less (regardless adversarial or benign).
+
+However, this time it is \ilc{I-FGSM} and \ilc{HSJ} having the least \textit{pertubation budget}. This is in fact resonable due to their iterative nature. We looked into our experiment and realized it is because \ilc{HSJ} was running on a test set of $250$ examples\footnote{We have to reduce the size as \ilc{BID} needs to generate the adversarial images twices}, in combinations with \ilc{max\_iter = 8}, the algorithm might not have enough iterations and random move to detect the decision boundaries of \textit{MINIST}, which can be a lot harder to detect as they all have pure-color backgrounds.
+
+
+\subsubsection{Pre-processor}
+
+
+\begin{figure}[H]
+
+\minipage{0.6\textwidth}
+    \includegraphics[width = 0.8\textwidth]{{fig/ss_minist_acc.png}}
+    \caption{Effectiveness comparision}
+    \label{ss_minist_acc}
+\endminipage\hfill
+\minipage{0.6\textwidth}
+    \includegraphics[width = 0.8\textwidth]{{fig/ss_minist_budget.png}}
+    \caption{Budget comparision}
+    \label{ss_minist_budget}
+\endminipage
+\caption*{Evasion attack algorithms v. \ilc{Spatial Smoothing} on \textit{MINIST}}
+\end{figure}
+
+\begin{figure}[H]
+
+\minipage{0.6\textwidth}
+    \includegraphics[width = 0.8\textwidth]{{fig/ss_cifar10_acc.png}}
+    \caption{Effectiveness comparision}
+    \label{ss_cifar10_acc}
+\endminipage\hfill
+\minipage{0.6\textwidth}
+    \includegraphics[width = 0.8\textwidth]{{fig/ss_cifar10_budget.png}}
+    \caption{Budget comparision}
+    \label{ss_cifar10_budget}
+\endminipage
+\caption*{Evasion attack algorithms v. \ilc{Spatial Smoothing} on \textit{CIFAR-10}}
+\end{figure}
+
+
+\ilc{Spatial Smoothing} a.k.a. \ilc{SS} is our implemented defense algorithm to increase model's robustness against adversarial input -- as it actually actually help predicting the true label of an adversarial image. We may proudly say that there is a $38 \%$ \textit{accuracy} before and after the \ilc{SS} being implemented across our four experimented algorithms (we exclude \ilc{D-DeepFool} for this disscussion as it performs identical to standard \ilc{DeepFool}) on \textit{MINIST}.
+
+Note this experiment also confirms the fact that \ilc{HSJ} is probably not ``converged'' yet with its current setting on \textit{MINIST}, as it has again costed high \textit{perturbation budget}. We also observed the higher the \textit{pertubation budget}, the better the defensive effectiveness -- this is again in accordance with out intuition as we as human can also distinguish highly perturbed picture well.\newline
+
+Also note  [\figurename{\ \ref{bd_minist_budget}}] seems to be suggesting low \textit{pertubation budget} will result in high model effectiveness, this is only semi-true as the overall effectiveness increase on \textit{CIFAR-10} is comparatively low (only $+6.5 \%$ among the $4$ experimented algorithms, where it is $+38 \%$ in \textit{MINIST}), so it is more of \ilc{SS} being effective against \ilc{HSJ}.
+
+We believe this have something to do with the fact \ilc{SS} look into the activations of neuros of adversarial pattern and either force-zero or oppress them. As \ilc{HSJ} being on the decisions boundaries (implied by the low \textit{pertubation budget}), a \ilc{HSJ}-generated adversarial imag might be considered to have adversarial patterns of many kinds and therefore being detected by the defense algorithm.
+
+Minyang, please correct me if I am wrong and add some insight.
+
+\subsubsection{Transformer}\label{defense_transformer}
+
+\begin{figure}[H]
+    \centering
+    \includegraphics[width = 0.8\textwidth]{{fig/nc_backdoor_acc_budget.png}}
+    \caption{\ilc{Backdoor} v. \ilc{Neural Cleanse}}
+    \label{nc_backdoor_acc_budget}
+\end{figure}
+
+Minyang please explain why this works.
+
+\subsubsection{Conclusion}
+
+As each defensive algorithms have their different purposes and propertities, it is hard to conclude them generally. But base on our consistent observation, it might be safe to say an adversarial example with less \textit{budger pertubation} is likely likely to be detected by a defensive algorithm -- which is consistent to our intuition and the geometrical stucture of feature space and decision boundaries: as if something is the middle of several boundaries, it will be hard to distinguish wheather it is an adversarial example of just an ``outliner'' of a neighborhood class.
+
+In a partical sense, it might be best
+
+% % % % % % % % % % % % % % % % % % % % % % % % % % % % % % % % %
+% % % % % % % % % % % % % % % % % % % % % % % % % % % % % % % % %
+% % % % % % % % % % % % % % % % % % % % % % % % % % % % % % % % %
+\section{References}
+\nocite{*}
+\raggedright
+\bibliography{references.bib}
+\bibliographystyle{plain}
 
 
 
