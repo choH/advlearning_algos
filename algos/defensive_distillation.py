@@ -68,12 +68,7 @@ def get_model(parameters, dataset, distilled=False):
 
 def train_model(model, training_dataset, testing_dataset, parameters, distilled=False):
 
-    #if parameters['momentum_decay'] is None:
     momentum=  parameters['momentum']
-    #else:
-        #momentum = tf.keras.optimizers.schedules.InverseTimeDecay(
-        #    parameters['momentum'], parameters['momentum_decay'], parameters['decay_delay'], staircase=True
-        #)
 
     if parameters['learning_rate_decay'] is None:
         learning_rate = parameters['learning_rate']
@@ -101,52 +96,84 @@ def test_model(model, testing_dataset):
 def get_soft_labels(model, dataset):
     return model.predict(dataset.images, verbose=1)
 
-def filter_soft_data_by_result(soft_dataset, hard_labels):
+def filter_soft_data_by_result(soft_dataset, hard_labels, add_wrong_predictions=False):
     predictions = np.argmax(soft_dataset.labels, axis=1)
     correct_predictions = (hard_labels == predictions)
-    return Dataset(soft_dataset.images[correct_predictions], soft_dataset.labels[correct_predictions], False)
+    wrong_predictions = (hard_labels != predictions)
+    if not add_wrong_predictions:
+        return Dataset(soft_dataset.images[correct_predictions], soft_dataset.labels[correct_predictions], False)
+    else:
+        soft_images = soft_data.images[correct_predictions]
+        hard_images = soft_data.images[wrong_predictions]
+        soft_labels = soft_data.labels[correct_predictions]
+        hard_labels = hard_labels[wrong_predictions]
+        images = soft_images.append(hard_images)
+        labels = soft_labels.append(hard_labels)
+        return Dataset(images, labels, False)
+
 
 def convert_to_one_hot(labels, num_classes):
     return np.eye(num_classes)[labels.reshape(-1)]
 
-def get_defensive_distilled_classifier(parameters, raw_training_data, raw_test_data, remove_incorrectly_predicted):
+def get_defensive_distilled_classifier(parameters, raw_training_data, raw_test_data, remove_incorrectly_predicted, replace_with_hard_labels=False):
     training_dataset = Dataset(raw_training_data[0], raw_training_data[1].flatten())
     test_dataset = Dataset(raw_test_data[0], raw_test_data[1])
     model = get_model(parameters, training_dataset)
     train_model(model, training_dataset, test_dataset, parameters)
-    #test_model(model, test_dataset)
     distilled_model = get_model(parameters, training_dataset, True)
     soft_labels = get_soft_labels(model, training_dataset)
     distilled_training_set = Dataset(raw_training_data[0], soft_labels)
     if remove_incorrectly_predicted:
-        distilled_training_set = filter_soft_data_by_result(distilled_training_set, training_dataset.labels)
+        distilled_training_set = filter_soft_data_by_result(distilled_training_set, training_dataset.labels, replace_with_hard_labels)
     distilled_test_set = Dataset(raw_test_data[0], convert_to_one_hot(raw_test_data[1], 10))
     train_model(distilled_model, distilled_training_set, distilled_test_set, parameters, True)
     return model, distilled_model
-    #test_model(distilled_model, distilled_test_set)
 
 if __name__ == '__main__':
     if len(argv) >= 2:
         disable_eager_execution()
         parameters_path = argv[1]
         remove_incorrectly_predicted = False
+        replace_with_hard_labels = False
         if len(argv) >= 3:
             remove_incorrectly_predicted = bool(argv[2])
+            if len(agrv) >= 4:
+                replace_with_hard_labels = bool(argv[2])
         parameters = None
         with open(parameters_path) as parameters_file:
             parameters = json.load(parameters_file)
         raw_training_data, raw_test_data = get_dataset(parameters['dataset'])
-        classifier, distilled_classifier = get_defensive_distilled_classifier(parameters, raw_training_data, raw_test_data, remove_incorrectly_predicted)
+        classifier, distilled_classifier = get_defensive_distilled_classifier(parameters, raw_training_data, raw_test_data, remove_incorrectly_predicted, replace_with_hard_labels)
         test_dataset = Dataset(raw_test_data[0], raw_test_data[1])
         distilled_test_set = Dataset(raw_test_data[0], convert_to_one_hot(raw_test_data[1], 10))
         art_classifier = KerasClassifier(model=classifier, clip_values=(0, 1), use_logits=False)
-        fast_gradient_method = FastGradientMethod(estimator=art_classifier, eps=0.2)
-        adversarial_test_images = fast_gradient_method.generate(x=test_dataset.images)
-        adversarial_dataset = Dataset(adversarial_test_images, raw_test_data[1], False)
-        distilled_adversarial_dataset = Dataset(adversarial_test_images, convert_to_one_hot(raw_test_data[1], 10), False)
-        test_model(classifier, adversarial_dataset)
-        test_model(distilled_classifier, distilled_adversarial_dataset)
-        #test_model(classifier, test_dataset)
-        #test_model(distilled_classifier, distilled_test_set)
+        art_classifier_distilled = KerasClassifier(model=distilled_classifier, clip_values=(0, 1), use_logits=False)
+
+        fast_gradient_method_low_epsil = FastGradientMethod(estimator=art_classifier, eps=0.1)
+        fast_gradient_method_high_epsil = FastGradientMethod(estimator=art_classifier, eps=0.2)
+        adversarial_low_epsil = fast_gradient_method_low_epsil.generate(x=test_dataset.images)
+        adversarial_high_epsil = fast_gradient_method_high_epsil.generate(x=test_dataset.images)
+        adversarial_low_dataset = Dataset(adversarial_low_epsil, raw_test_data[1], False)
+        adversarial_high_dataset = Dataset(adversarial_high_epsil, raw_test_data[1], False)
+
+        fast_gradient_method_low_epsil_distilled = FastGradientMethod(estimator=art_classifier_distilled, eps=0.1)
+        fast_gradient_method_high_epsil_distilled = FastGradientMethod(estimator=art_classifier_distilled, eps=0.3)
+        adversarial_low_epsil_distilled = fast_gradient_method_low_epsil_distilled.generate(x=test_dataset.images)
+        adversarial_high_epsil_distilled = fast_gradient_method_high_epsil_distilled.generate(x=test_dataset.images)
+        adversarial_low_dataset_distilled = Dataset(adversarial_low_epsil_distilled, convert_to_one_hot(raw_test_data[1], 10), False)
+        adversarial_high_dataset_distilled = Dataset(adversarial_high_epsil_distilled, convert_to_one_hot(raw_test_data[1], 10), False)
+
+        print("Non-distilled normal examples")
+        test_model(classifier, test_dataset)
+        print("Distilled normal examples")
+        test_model(distilled_classifier, distilled_test_set)
+        print("Non-distilled adversarial 0.1 epsilon examples")
+        test_model(classifier, adversarial_low_dataset)
+        print("Non-distilled adversarial 0.3 epsilon examples")
+        test_model(classifier, adversarial_high_dataset)
+        print("Distilled adversarial 0.1 epsilon examples")
+        test_model(distilled_classifier, adversarial_low_dataset_distilled)
+        print("Distilled adversarial 0.3 epsilon examples")
+        test_model(distilled_classifier, adversarial_high_dataset_distilled)
     else:
         print("ERROR: No path to parameters file provided")
