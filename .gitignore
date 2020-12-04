@@ -1,5 +1,6 @@
 # Project Specific
-
+article*
+!article.tex
 
 # Local Testing
 logs/*
