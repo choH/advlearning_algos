@@ -1,0 +1,140 @@
+\documentclass[11pt]{article}
+\usepackage{times}
+\usepackage{setspace}
+\singlespacing
+\usepackage{amsmath,amssymb, amsthm}
+\usepackage{graphicx}
+\usepackage{bm}
+\usepackage[hang, flushmargin]{footmisc}
+\usepackage[colorlinks=true]{hyperref}
+\usepackage[nameinlink]{cleveref}
+\usepackage{footnotebackref}
+\usepackage{url}
+\usepackage{listings}
+\usepackage[most]{tcolorbox}
+\usepackage{inconsolata}
+\usepackage[papersize={8.5in,11in}, margin=1in]{geometry}
+\usepackage{float}
+\usepackage{caption}
+\usepackage{esint}
+\usepackage{url}
+\usepackage{enumitem}
+\usepackage{subfig}
+\usepackage{wasysym}
+\newcommand{\ilc}{\texttt}
+\newcommand{\p}{\partial}
+\newcommand{\vphi}{\varphi}
+\usepackage{etoolbox}
+\usepackage{physics}
+\usepackage{xcolor}
+\usepackage{subfiles}
+\patchcmd{\thebibliography}{\section*{\refname}}{}{}{}
+
+
+
+
+% \makeatletter
+% \renewcommand{\@seccntformat}[1]{}
+% \makeatother
+
+\begin{document}
+
+
+\title{\textbf{CSDS 440 Class Project: \\Adversarial Machine Learning}}
+
+\author{Shaochen (Henry) Zhong, \ilc{sxz517} \\ Minyang Tie, \ilc{mxt497} \\ Alex Useloff, \ilc{adu3} \\ Austin Keppers, \ilc{agk51} \\ David Meshnick, \ilc{dcm101}\\}
+\date{Due and submitted on 12/04/2020 \\ Fall 2020, Dr. Ray}
+\maketitle
+
+\renewcommand{\abstractname}{Contributions}
+\begin{abstract}
+We as a group of five have looked into the field of adversarial machine learning and specifically investigated several algorithms regarding aspects of attack (evasion, poisoning) and defense (detector, transformer, pre-process). Inside the group, overall contribution are as following:
+\begin{itemize}
+    \item Henry:
+    \begin{itemize}
+        \item Read 3 papers on algorithms.
+        \item Implemented 2 algorithms (\ilc{FGSM} and \ilc{Hop Skip Jump}) with 3 extensions.
+        \item Piplined attack algorithms to work with 2 datasets, collected almost all (7 algorithms/useable extensions) attack experiments data (except \ilc{backdoor} and \ilc{one pixel attack}) for the comparative evaluations.
+        \item Piplined and collected experiments data for \ilc{FGSM, Hop Skip Jump, DeepFool} attacks (and their useable extensions) against \ilc{Detector} and \ilc{Spatial Smoothing} defenses on 2 datasets.
+        \item Implemented $L_2$ and $L_{\infty}$ \textit{perturbation budget} to aid comparative evaluation.
+        \item Wrote \textbf{Introduction and Significance} section.
+        \item Plotted all graphs and charts in \textbf{Comparative Study and Discussion}.
+        \item Helped group move forward by making technical decisions, distributing works, setting up deadlines, and facilitating coordination between groupmates.
+    \end{itemize}
+    \item Minyang:
+    \item Alex:
+    \item Austin:
+    \item David:
+\end{itemize}
+\end{abstract}
+
+
+
+\setcounter{tocdepth}{4}
+\vspace{0.5cm}
+{\hypersetup{hidelinks}
+\tableofcontents
+}
+
+\newpage
+
+\section{Introduction and Significance}
+
+\section{Individual Reports}
+
+\subsection{Shaochen (Henry) Zhong's Individual Report}
+\subsubsection{Overview}
+
+
+\subsubsection{\ilc{Fast Gradient Sign Method}}
+\paragraph{Algorithm Intuition}
+\paragraph{Algorithm Implementation}
+\paragraph{Experiments}
+\paragraph{Evaluation}
+
+\subsubsection{\ilc{Hop Skip Jump}}
+\paragraph{Algorithm Intuition}
+\paragraph{Algorithm Implementation}
+\paragraph{Experiments}
+\paragraph{Evaluation}
+
+
+\subsubsection{\ilc{Feature Collision}}
+\paragraph{Algorithm Intuition}
+
+
+\subsection{Minyang Tie's Individual Report}
+
+
+\subsection{Alex Useloff's Individual Report}
+
+
+\subsection{Austin Keppers' Individual Report}
+\subfile{individual_reports/agk51}
+
+\subsection{David Meshnick's Individual Report}
+
+\section{Comparative Study and Discussion}
+
+\subsection{Overview}
+\subsection{Attack Algorithms}
+\subsubsection{Evasion}
+\subsubsection{Poisoning}
+\subsection{Defense Algorithms}
+
+
+
+
+% % % % % % % % % % % % % % % % % % % % % % % % % % % % % % % % % %
+% % % % % % % % % % % % % % % % % % % % % % % % % % % % % % % % % %
+% % % % % % % % % % % % % % % % % % % % % % % % % % % % % % % % % %
+% \section{References}
+% \nocite{*}
+% \raggedright
+% \bibliography{references.bib}
+% \bibliographystyle{plain}
+
+
+
+
+\end{document}
