@@ -1,7 +1,7 @@
 # Project Specific
 article*
 !article.tex
-
+!article.pdf
 # Local Testing
 logs/*
 pg_[0-9].py
