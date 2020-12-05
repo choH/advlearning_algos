@@ -1,0 +1,19 @@
+{
+	"dataset": "CIFAR10",
+	"image_size": 32,
+	"conv1_layers": 2,
+	"conv1_num_filters": 64,
+	"conv2_layers": 2,
+	"conv2_num_filters": 128,
+	"num_units": 256,
+	"num_softmax_units": 10,
+	"learning_rate": 0.1,
+	"learning_rate_decay": null,
+	"decay_delay": 10,
+	"dropout_rate": 0.5,
+	"momentum": 0.5,
+	"momentum_decay": 0.5,
+	"batch_size": 128,
+	"epochs": 50,
+	"temperature": 100
+}

@@ -1,0 +1,19 @@
+{
+	"dataset": "MNIST",
+        "image_size": 28, 
+	"conv1_layers": 2,
+	"conv1_num_filters": 32,
+	"conv2_layers": 2,
+	"conv2_num_filters": 64,
+	"num_units": 200,
+	"num_softmax_units": 10,
+	"learning_rate": 0.1,
+        "learning_rate_decay": null,
+	"decay_delay": null,
+	"dropout_rate": 0.5,
+	"momentum": 0.5,
+        "momentum_decay": null,
+	"batch_size": 128,
+	"epochs": 50,
+	"temperature": 100
+}
