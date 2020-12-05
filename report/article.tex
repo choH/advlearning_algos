@@ -126,6 +126,8 @@ For this paper in particular, we will look into \textit{evasion attack} (causing
 
 \section{Individual Reports}
 
+
+
 \subsection{Shaochen (Henry) Zhong's Individual Report}
 \subsubsection{Overview}
 
@@ -340,18 +342,20 @@ So, in a general term, \ilc{Feature Collision} \textit{collides} the feature bet
 
 In the paper, the author also emphasis the effectiveness of \ilc{Feature Collision} as normally posioning attack will require control of labels or even having adversarial examples in to most or every batch of images, but \ilc{Feature Collision} complete an effective attack even with just one adversarial example -- a legitment \textit{one-shot kill} as named by the authors.
 
+\newpage
 \subsection{Minyang Tie's Individual Report}
 
-
+\newpage
 \subsection{Alex Useloff's Individual Report}
 
-
+\newpage
 \subsection{Austin Keppers' Individual Report}
-\subfile{individual_reports/agk51}
 
+
+\newpage
 \subsection{David Meshnick's Individual Report}
-\subfile{individual_reports/dcm101}
 
+\newpage
 \section{Comparative Study and Discussion}
 
 In this section, we will present a comparative study between some algorithms (and their comparable extensions) we implemented.
@@ -438,7 +442,7 @@ We have implemented and experimented multiple attack and defense algorithms, but
 
 We opted to compare \ilc{Fast Gradient Sign Method} (non-targeted, with one-shot and iterative implementions), \ilc{Hop Skip Jump}, \ilc{DeepFool} (and \ilc{Dynamic DeepFool} -- an extension implemented by David) together as they are all the non-targed evasion algorithm we implemented. We opted to not include \ilc{Backdoor} in this set of comparsion as it evasion attacks were done in the assumption of having a trained model, it doesn't make sense to have posioning -- which can alter the training set of a model -- to be part of the comparsion. Similarily, the two targeted extensions \ilc{FGSM} is excluded from this comparsion as in this context it is the magnitude of decrease of model \textit{accuracy} in general we care about, but not which exact label the model most classifies to.
 
-Likewise, we opted to not compare any other algorithm except \ilc{Backdoor} to against \ilc{Neural Cleanse}, as: Minyang please input here.
+Likewise, we opted to not compare any other algorithm except \ilc{Backdoor} to against \ilc{Neural Cleanse}, as unlearning the backdoor by retraining is one of the Neural Cleanse method, the defense of unlearning retraining is depend on the pattern. Since the Backdoor algorithm is a pattern attack algorithm, so the comparison between Backdoor and unlearning retraining is the most reasonable part. Also, retraining is a is a commonly used defense method, here we just specifically retrain the pattern of backdoor insert.
 
 Also we are not comparing different defense algorithms against a same attack algorithm. This is not because we are not interested in the performance difference between defense algorithm. It is simply because we have already elimited \ilc{Neural Cleanse} due to its retrain nature; and for the other two remained defense algorithm \ilc{Binary Input Detector} and \ilc{Spatial Smoothing}, the former one is designed to recognize and flag an adversarial image, where the latter is to increase model robustness so that it can better classified adversarially perturbed images -- so they can't be compared.
 
@@ -628,9 +632,9 @@ Note this experiment also confirms the fact that \ilc{HSJ} is probably not ``con
 
 Also note  [\figurename{\ \ref{bd_minist_budget}}] seems to be suggesting low \textit{pertubation budget} will result in high model effectiveness, this is only semi-true as the overall effectiveness increase on \textit{CIFAR-10} is comparatively low (only $+6.5 \%$ among the $4$ experimented algorithms, where it is $+38 \%$ in \textit{MINIST}), so it is more of \ilc{SS} being effective against \ilc{HSJ}.
 
-We believe this have something to do with the fact \ilc{SS} look into the activations of neuros of adversarial pattern and either force-zero or oppress them. As \ilc{HSJ} being on the decisions boundaries (implied by the low \textit{pertubation budget}), a \ilc{HSJ}-generated adversarial imag might be considered to have adversarial patterns of many kinds and therefore being detected by the defense algorithm.
+We believe this have something to do with the fact \ilc{SS} set the value of each pixel to be the mean value of the pixels around this pixel and it can make the pixel value become more continuous. As \ilc{HSJ} being on the decisions boundaries (implied by the low \textit{pertubation budget}),
+Thus the mean value set by \ilc{SS} can used to vague the boundaries to defense.
 
-Minyang, please correct me if I am wrong and add some insight.
 
 \subsubsection{Transformer}\label{defense_transformer}
 
@@ -641,13 +645,13 @@ Minyang, please correct me if I am wrong and add some insight.
     \label{nc_backdoor_acc_budget}
 \end{figure}
 
-Minyang please explain why this works.
+\ilc{Neural Cleanse} is our implemented defense algorithm focus on Unlearning the backdoor by retraining，the algorithm is defend by train infected DNN to recognize correct labels. Here we specifically retrain the pattern of \ilc{Backdoor} insert as mentioned on Section $3.1.4$. Thus Against the \ilc{Backdoor} attack, \ilc{Neural Cleanse} can achieve a very good defense effect.\newline
+By the graph, the Defensive Accuracy is $70.89\%$ (Note we train the whole \textit{MINIST} dataset), which is a very good defence accuracy. In this case, we do not want to compare with other attack algorithm, because the essence of Unlearning retraining is to allow the neural network to resist the influence of external patterns, so retraining is to use pattern to modify the data of the test set and then for training，therefore only \ilc{Backdoor} we implemented is pattern attack, that is why we only compare \ilc{Backdoor} to against \ilc{Neural Cleanse} on this section.
 
 \subsubsection{Conclusion}
 
 As each defensive algorithms have their different purposes and propertities, it is hard to conclude them generally. But base on our consistent observation, it might be safe to say an adversarial example with less \textit{budger pertubation} is likely likely to be detected by a defensive algorithm -- which is consistent to our intuition and the geometrical stucture of feature space and decision boundaries: as if something is the middle of several boundaries, it will be hard to distinguish wheather it is an adversarial example of just an ``outliner'' of a neighborhood class.
 
-In a partical sense, it might be best
 
 % % % % % % % % % % % % % % % % % % % % % % % % % % % % % % % % %
 % % % % % % % % % % % % % % % % % % % % % % % % % % % % % % % % %
