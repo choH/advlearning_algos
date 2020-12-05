@@ -32,6 +32,26 @@
 
 
 
+\definecolor{dkgreen}{rgb}{0,0.6,0}
+\definecolor{gray}{rgb}{0.5,0.5,0.5}
+\definecolor{mauve}{rgb}{0.58,0,0.82}
+
+\lstset{frame=tb,
+  language=Python,
+  aboveskip=3mm,
+  belowskip=3mm,
+  showstringspaces=false,
+  columns=flexible,
+  basicstyle={\small\ttfamily},
+  numbers=none,
+  numberstyle=\tiny\color{gray},
+  keywordstyle=\color{blue},
+  commentstyle=\color{dkgreen},
+  stringstyle=\color{mauve},
+  breaklines=true,
+  breakatwhitespace=true,
+  tabsize=3
+}
 
 % \makeatletter
 % \renewcommand{\@seccntformat}[1]{}
@@ -124,25 +144,125 @@ I have wholeheartedly lead and contributed to this group project, below is an it
 \subsubsection{\ilc{Fast Gradient Sign Method}}
 \paragraph{Algorithm Intuition}
 
-\ilc{FGSM} is a \textit{white-box} evasion attack algorithm. Being \text{white-box} means the attacker is assumed to have access to the internal of the model: the structure, the parameters... basically each and every details of the model is considered to be known.
+\ilc{FGSM}\cite{cite:fsgm_paper} is a \textit{white-box} evasion attack algorithm. Being \text{white-box} means the attacker is assumed to have access to the internal of the model: the structure, the parameters... basically each and every details of the model is considered to be known.
 
 In this case, we mostly care about the \ilc{loss} function of the model. The intuition of \ilc{FGSM} is elegent and effective -- in short: gradient ascent. Assume we have an benign example $x$ with label $y$, and we are trying to make it adversarial by letting the model classify $x_{\text{adv}}$ to be not $y$. We apply the following pertubation on $x$ to achieve an $x_{\text{adv}}$
 
 \begin{equation}
-    x_{\text{adv}} = x + \epsilon \cdot \textit{sign}(\nabla_x J(\theta, x, y))
+    x_{\text{adv}} = x + \epsilon \cdot \text{sign}(\nabla_x J(\theta, x, y))
+    \label{fgsm_eq}
 \end{equation}
 
-where $J$ is the \ilc{loss} function and $\theta$ is the parameters of the model. It is clearly to tell that by finding a proper amount of $\epsilon$, we know $x_{\text{adv}}$ will eventually cross the $y-\neg y$
+where $J$ is the \ilc{loss} function and $\theta$ is the parameters of the model. It is clearly to tell that by finding a proper amount of $\epsilon$, we know $x_{\text{adv}}$ will eventually cross the $y$ and $\neg y$ decision boundary and be classified as a $\neg y$ object. We know this direction will lead to a $\neg y$ space because a model is designed to minimize the \ilc{loss} -- thus it is always doing gradient descent -- and by going against the gradient to do gradient ascent, it will ``maximize'' the \ilc{loss} and eventually be misclassified. And if the value of $\epsilon$ is small enough, the $x_{\text{adv}}$ will sill perserve enough semantic from $x$ and thus relatively indistinguishable to human eyes. Like the following exmaple in [\figurename{\ \ref{google_panda}}]:
+
+
+\begin{figure}[H]
+    \centering
+    \includegraphics[width = 0.8\textwidth]{{fig/google_panda.png}}
+    \caption{Applying gradient ascent pertubation to a panda image, $\epsilon = 0.07$}
+    \label{google_panda}
+\end{figure}
+
+Although the $x_{\text{adv}}$ on the RHS has been adversarially altered, because the distance of pertubation is small enough, it sill looks like a panda -- a.k.a. perserving the majority semantic of $x$.
+
+\subparagraph{Extension 1: \ilc{Targeted Fast Gradient Sign Method}}
+
+As standard \ilc{FGSM}, assuming implemented on $x$ with $y$-label, only cares about reaching a space of $\neg y$. This can be undesired for certain application. One scenario maybe is to attack the OCR system of bank checks (which is usually the goal when attacking \textit{MINIST}), the attacker would want a lower valued number to be recognized as a higher valued number (e.g., \ilc{0 -> 9}), but not vice versa. Thus, I have implemented a targeted version of \ilc{FGSM}, where instead of doing gradient ascent to $y$ like in [Equation \ref{fgsm_eq}], it does gradient descent towards the label of desired target.\newline
+
+Say we have a target of $x_t$ with label $y_t$, the mathematical intuition of \ilc{T-FGSM} is:
+
+\begin{equation}
+    x_{\text{adv}} = x - \epsilon \cdot \text{sign}(\nabla_x J(\theta, x, y_t))
+    \label{t_fgsm_eq}
+\end{equation}
+
+Note we are back to standard gradient descent like running a normal model. This is because we want to minimize the \ilc{loss} of $x_{\text{adv}}$ with label $y_t$ -- which is not guaranteed by randoming doing gradient ascent out of $y$ as that might not be the right direction.
+
+\subparagraph{Extension 2: \ilc{Iterative Fast Gradient Sign Method}}
+
+One major drawback of traditional \ilc{FGSM} is to decide the $\epsilon$ value in [Equation \ref{fgsm_eq}]. Intuitively, such $\epsilon$ can't be too small, otherwise the applied pertubation will be too small to make $x_{\text{adv}}$ across the $y$ to $\neg y$ decision boundary. However, it also can't be too large as it will lose the semantic of $x$, like in the follwing example we applied an $\epsilon = 30$ to the Labrador Retriever in [\figurename{\ \ref{adv_example}}] and this is just pure noise:
+
+\begin{figure}[H]
+    \centering
+    \includegraphics[width = 0.2\textwidth]{{fig/google_fgsm_overshoot.png}}
+    \caption{Perturbed Labrador Retriever with $\epsilon = 30$}
+    \label{google_fgsm_overshoot}
+\end{figure}
+
+In this case, although [\figurename{\ \ref{google_fgsm_overshoot}}] is still an successful adversarial attack to the machine (as it was classified as \textit{Chain Mail} for some reasons). The attack is by essence meaningless as it has lost all semantics of a Labrador Retriever -- and we might as well just swap it with an actual chain mail picture and call it a successful attack.\newline
+
+\noindent More important, depending on the decision boundaries of a model, some value of $\epsilon$, altough being large enough, might also fail the attack. Consider a model with the following decision boundary:
+
+\begin{figure}[H]
+    \centering
+    \includegraphics[width = 0.3\textwidth]{{fig/overshoot_non_target.png}}
+    \caption{Potential $\epsilon$ overshoot}
+    \label{overshoot_non_target}
+\end{figure}
+
+As demoed in [\figurename{\ \ref{google_fgsm_overshoot}}], with an unfortunate $\epsilon$, even being large, an attack can still fail. Thus I took advantage of doing a \textit{white-box} attack and implemented an iterative version of \ilc{FGSM}. As instead of taking an \textit{one-shot} pertubation, it takes one and another small pertubations to reach to a decision boundary; once the prediction is changed, it stops applying further pertubations.
+
+The mathematical intuition of this algorithm will be like [Equation \ref{i_fgsm_eq}]
+
+\begin{equation}
+    x_{\text{adv}_{i+1}} = x_{\text{adv}_{i}} + \epsilon_{\text{step}} \cdot \text{sign}(\nabla_x J(\theta, x_{\text{adv}_{i}}, y))
+    \label{i_fgsm_eq}
+\end{equation}
+
+where $\epsilon_{\text{step}} \ll \epsilon$, and we can hard bound the accumulation of $\epsilon_{\text{step}}$ to be less or equal to $\epsilon$ so the algorithm try to perturb an example which is far away from its decision boundary and running forever. And since the final $x_{\text{adv}} $ will be right on the decision boundary (granted a small enough $\epsilon_{\text{step}}$ was used), it will perserve a healthy amount of semantics of $x$.
+
+\subparagraph{Extension 3: \ilc{Iterative Targeted Fast Gradient Sign Method}}
+
+Naturally, I combined my two implementation together. [Equation \ref{it_fgsm_eq}] is the mathematical intuition of the algorithm:
+
+\begin{equation}
+    x_{\text{adv}_{i+1}} = x_{\text{adv}_{i}} - \epsilon_{\text{step}} \cdot \text{sign}(\nabla_x J(\theta, x_{\text{adv}_{i}}, y_t))
+    \label{it_fgsm_eq}
+\end{equation}
 
 \paragraph{Algorithm Implementation}
-\paragraph{Experiments}
-\paragraph{Evaluation}
+
+I implemented \ilc{FGSM} and its three extentions with the help of \ilc{ART}\cite{cite:art}. It is a \ilc{Python}-based open-source libarary that taken care of the engineering aspects of adversarial machine learning testing. Specifically, I used \ilc{ART}'s \ilc{KerasClassifier} to wrap around a pretrained model of \textit{MINIST} and \textit{CIFAR-10} as my victim model -- I can do this because all my implemented algorithms and extensions is attacking a trained model, so how the model was trained is not in my interest of evaluation.\newline
+
+I first gather the \ilc{x\_test} sample set from my dataset, then I feed into the pretained model to get \textit{benign acc} reading. Then I apply the below actiovation methods (by choice)
+
+\begin{lstlisting}
+attacker = FastGradientSignMethod(classifier, eps=0.3, batch_size = 32)
+x_test_adv = attacker.generate(x_test[:num]) # non-targeted
+x_test_adv = attacker.generate_targeted(x_test[:num], x_test[0]) # targeted
+x_test_adv = attacker.generate_iterative(x_test[:num]) # iterative non-targeted
+x_test_adv = attacker.generate_targeted_iterative(x_test[:num], x_test[0]) # iterative targeted
+\end{lstlisting}
+
+to generate the adversarially perturbed \ilc{x\_test\_adv} from \ilc{x\_test}. I then feed \ilc{x\_test\_adv} into the pretained model and collect the \textit{adversarial acc} reading.
+
+In the meantime, I collect $L_2$ and $L_\infty$ distances between a benign and an adversarial images (calculated by channel) to be a mertrics of quantifying \textit{pertubation budget}. I also implemented a runtime counter to register how long it took an attack method to run -- you may see them in my following Section \ref{fgsm_exp} and comparative study sections like \ref{attack_algo}.
+
+\paragraph{Experiments and Evaluation}\label{fgsm_exp}
+
+Since I have implemented multiple extensions and \ilc{FGSM} have several params to tone with, I have did a vast amount of experiments. We later decided to go with \ilc{eps = 0.3, eps\_step = 0.05}
+
+
+\begin{figure}[H]
+    \centering
+    \includegraphics[width = 1\textwidth]{{fig/i_fgsm_minist.png}}
+    \caption{\ilc{T-FGSM} and \ilc{IT-FGSM} with $\epsilon = \{ 0.1, 0.3, 0.5\}$ on \textit{MINIST}}
+    \label{i_fgsm_minist}
+\end{figure}
+
+because in [\figurename{\ \ref{google_fgsm_overshoot}}], we may observe the mentioned ``overshooting'' problem as in \ilc{T-FGSM} the \textit{Targeted Acc} is decreasing with $\epsilon$ increasing. However, this is sloved by implementing \ilc{IT-FGSM}, the \textit{Targeted Acc} is growing with the $\epsilon$.
+
+Also we noticed we ended with a much better \textit{pertubation budget} in \ilc{IT-FGSM}. This is because the algorithm stop pertubation once it reached the target label, thus remain a smaller and therefore preferred $L_2$ and $L_\infty$. But we do realize even in \ilc{IT-FGSM}, the $L_2$ and $L_\infty$ is increasing with $\epsilon = 0.3 \rightarrow 0.5$, this is because with a bigger $\epsilon$ the algorithm is trying to move picture that are relatively far away from the target to be the target -- this is undesired the resulted images will likely losing semantics, and it cost more computing power to do so (which is also reflected by the \textit{runtime} data, as it is significantly slower in $\epsilon = 0.5$ than $\epsilon = 0.3$). Thus, we set the this to be the parameters of \ilc{FGSM}-related algorithms in comparative studies.
+
+
 
 \subsubsection{\ilc{Hop Skip Jump}}
+
+\ilc{HSJ}\cite{cite:hsj_paper} is another evasion attack algorithm I implemented.
+
 \paragraph{Algorithm Intuition}
 \paragraph{Algorithm Implementation}
-\paragraph{Experiments}
-\paragraph{Evaluation}
+\paragraph{Experiments and Evaluation}
 
 
 \subsubsection{\ilc{Feature Collision}}
@@ -330,7 +450,7 @@ Please refer to Section \ref{defense_transformer} as we have only one poisoning 
 
 \subsubsection{Conclusion}
 
-We have made the obersvation of \ilc{HSJ} is having the best \textit{accuracy} performance. With \ilc{HSJ} and \ilc{I-FGSM} being more successful on controlling their perturbation budget -- due to their iterative nature -- and therefore probably are overall more reliable attacks as they can generate more effective (i.e. more confuse to a modal) adversarial examples while preserve better semanic of the original benign image (i.e. the pertubation is less obvious to human's eyes).
+We have made the obersvation of \ilc{HSJ} is having the best \textit{accuracy} performance. With \ilc{HSJ} and \ilc{I-FGSM} being more successful on controlling their perturbation budget -- due to their iterative nature -- and therefore probably are overall more reliable attacks as they can generate more effective (i.e. more confuse to a modal) adversarial examples while preserve better semantic of the original benign image (i.e. the pertubation is less obvious to human's eyes).
 
 Note we also discovered \ilc{I-FGSM} and \ilc{HSJ} are computationally-heavy (especially the latter), due to their iterative nature and the need of many binary search operations in the case of \ilc{HSJ}. So it is suspected this sort of attacks can be better prevented by implementing flow control mechanism of the model \ilc{predict()} API -- as without enough steps of iterations, these two algorithms won't easily find the decision boundary of the model.\newline
 
