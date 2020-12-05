@@ -350,6 +350,7 @@ In the paper, the author also emphasis the effectiveness of \ilc{Feature Collisi
 \subfile{individual_reports/agk51}
 
 \subsection{David Meshnick's Individual Report}
+\subfile{individual_reports/dcm101}
 
 \section{Comparative Study and Discussion}
 
@@ -486,7 +487,7 @@ By investigating the [\figurename{\ \ref{attack_minist_budget}}] we may confirm 
 
 In our pervious observation on [\figurename{\ \ref{attack_minist_acc}}] we said \ilc{HSJ} has the best performance in terms \textit{adversarial acc}. Now we know that \ilc{HSJ} did such with minimum perturbation budget spent (by having the lowrest mean $L_2$ and mean $L_\infty$ across the board). However, the cost of doing this is very high, the runtime of \ilc{HSJ} is close $100$ times of other algorithm. These observations are also consistent to our understanding of \ilc{HSJ}, as it is doing \textit{binary search} until it crosses the decision boundary -- so it can perserve a high amount semantic from the original image, at the cost of spending a lot of time to find such image.\newline
 
-David please explain a bit on DeepFool as why it perturbed a huge amount while performed not so well, and maybe also why its $L_\infty$ is a lot higher than $L_2$.
+An unexpected observation came from the \ilc{DeepFool} algorithm, which iterated through more perturbations than we had anticipated. This came about as a result of DeepFool's deceptively simple nature, as it is effectively a greedy search algorithm. While the function's goal is to enact the fewest possible perturbations to confidently disrupt a classifier, its descent along its gradient does not share the same efficiency. The base learning rate ended up costing a significant amount of computational resources. However, the extension David created may be a possible solution to this problem. As elaborated upon in the individual report, the \ilc{Dynamic DeepFool} implements a logarithmically decreasing learning rate, which improves the speed at which the algorithm approaches the class label boundary. This allowed it to have a noticeably smaller quantity of perturbation iterations, and also out performing the original DeepFool in terms of attack effectiveness on an undefended learning system.
 
 \begin{figure}[H]
     \centering
@@ -525,7 +526,11 @@ We have made the obersvation of \ilc{HSJ} is having the best \textit{accuracy} p
 
 Note we also discovered \ilc{I-FGSM} and \ilc{HSJ} are computationally-heavy (especially the latter), due to their iterative nature and the need of many binary search operations in the case of \ilc{HSJ}. So it is suspected this sort of attacks can be better prevented by implementing flow control mechanism of the model \ilc{predict()} API -- as without enough steps of iterations, these two algorithms won't easily find the decision boundary of the model.\newline
 
-\ilc{DeepFool} and \ilc{D-DeepFool} have shown very similar performance across this section of experiments and their performance are considerably lacking both in terms of \textit{adversarial acc} and \textit{perturbation budget}. David, please again summarize a bit here.
+
+\ilc{DeepFool} and \ilc{D-DeepFool} have shown very similar performance across this section of experiments and their performance are considerably lacking both in terms of \textit{adversarial acc} and \textit{perturbation budget}. However, the relative-simplicity of the algorithm lends itself more easily to modification, as demonstrated by the performance gains of simply altering the learning rate of the methods gradient traversal.
+
+One last interesting point of comparison lies between white-box algorithms like \ilc{DeepFool} and black-box algorithms like \ilc{One Pixel Attack}. The white-box attack method had unrestrained access to the inner parameters of the victim classifier, and was typically highly effective. Meanwhile, the black-box attack could only view the inputs and outputs of the victim model, and was not as effective. However, the black-box algorithm was less computationally expensive, as well as requiring fewer parameters to act. Thus, we believe that further analysis is warranted to explore the trade-offs with regards to metrics such as computational resources and speed, between each method.
+
 
 \subsection{Defense Algorithms}
 
@@ -561,7 +566,6 @@ Thus, the interest is left to \textit{benign flag}, we cannot rejected $E_{\ilc{
 
 By investigating the [\figurename{\ \ref{bd_minist_budget}}] graph, it can be tell there is a clearly correlation between the \textit{pertubation budget} and the \textit{adversarial flag} or \textit{benign flag} (e.g., \ilc{D-DeepFool}). This is in fact very intuitive as less \textit{pertubation budget}  means the generated adversarial examples have perserved more semantics or their benign origins, thus making \ilc{BID} hard to distinguish wheather an example is benign or not.
 
-However, it remainds unknow why \ilc{D-DeepFool} has a much lesser \textit{benign flag} and \textit{adversarial flag} in comparision to \ilc{DeepFool}. David please have some input here thanks.
 
 
 \begin{figure}[H]
