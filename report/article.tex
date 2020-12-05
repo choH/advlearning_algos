@@ -220,9 +220,9 @@ Naturally, I combined my two implementation together. [Equation \ref{it_fgsm_eq}
     \label{it_fgsm_eq}
 \end{equation}
 
-\paragraph{Algorithm Implementation}
+\paragraph{Algorithm Implementation}\label{fgsm_imp}
 
-I implemented \ilc{FGSM} and its three extentions with the help of \ilc{ART}\cite{cite:art}. It is a \ilc{Python}-based open-source libarary that taken care of the engineering aspects of adversarial machine learning testing. Specifically, I used \ilc{ART}'s \ilc{KerasClassifier} to wrap around a pretrained model of \textit{MINIST} and \textit{CIFAR-10} as my victim model -- I can do this because all my implemented algorithms and extensions is attacking a trained model, so how the model was trained is not in my interest of evaluation.\newline
+I implemented \ilc{FGSM} and its three extentions with the help of \ilc{ART}\cite{cite:art} (which has dependency to \ilc{Tensorflow} and \ilc{Keras}). It is a \ilc{Python}-based open-source libarary that taken care of the engineering aspects of adversarial machine learning testing. Specifically, I used \ilc{ART}'s \ilc{KerasClassifier} to wrap around a pretrained model of \textit{MINIST} and \textit{CIFAR-10} as my victim model -- I can do this because all my implemented algorithms and extensions is attacking a trained model, so how the model was trained is not in my interest of evaluation.\newline
 
 I first gather the \ilc{x\_test} sample set from my dataset, then I feed into the pretained model to get \textit{benign acc} reading. Then I apply the below actiovation methods (by choice)
 
@@ -258,16 +258,87 @@ Also we noticed we ended with a much better \textit{pertubation budget} in \ilc{
 
 \subsubsection{\ilc{Hop Skip Jump}}
 
-\ilc{HSJ}\cite{cite:hsj_paper} is another evasion attack algorithm I implemented.
+\ilc{HSJ}\cite{cite:hsj_paper} is another evasion attack algorithm I implemented. However, it is designed to be a \textit{black-box} attack method, as the attacker don't have access to the internal structure of the model, and the attack is therefore conducted base on model's output (it will be better if the model can also output confidence leval, but it work fine with just signs).
 
 \paragraph{Algorithm Intuition}
+
+With the fundamentals introduced, we may jump into the mathematical intuition of \ilc{HSJ}. Note this is a brief walk through of how \ilc{HSJ} work, but not necessarily \textit{``why''} as the original paper used many theorem, which we won't go through here.
+
+\begin{align}
+    S(x') &= max_{c \neq C(x)}{F(x')c - F(x')_{C(x)}} \\ \nonumber
+    S(x') > 0 &\Leftrightarrow \arg \max_c F(x') \neq C(x)
+    \label{hsj_s_eq}
+\end{align}
+
+where $S(x')$ is the decision boundary of the example $x'$, $F(x')$ is the probability of $x'$ class, and $C(x)$ is the current class. This is saying the model on $C(x)$ is looking at different classes around itself (different $x'$(s)), and take the one different class with with maximum likelyhood. Let $S(x')$ represent a succesuflly attack, we will then try to minimize the distance between $d(x', x)$ while making $S(x') > 0$.
+
+This setup is very similar to a targeted \ilc{FGSM}. So natually, we want to get to the boundary of the $x$ and $x'$. However with no access to \ilc{loss} function, what we can do is to do a \ilc{binary search} between $x$ and $x'$ and make it $x_{\text{new}}$, and then estimate the gradient of $x_{\text{new}}$, move along such estimated gradient for a short step, then do another \ilc{binary search} until $S(x') > 0$.
+
+For the gradient estimation, the author proposed a function of:
+
+
+\begin{equation}
+    \widetilde{\nabla S}(x', \delta) = \frac{1}{B} \limit \sum^{B}_{b=1} \phi (x' + \delta u_b) u_b
+    \label{hsj_g_est}
+\end{equation}
+
+Where $\phi(x') = \text{sign}(S(x'))$, which we have get by simply asking the model to predict $x'$. And $u_b$ are group of random vectors around $x'$. We than ignore the random vertors that is close to being parallel to the decision boundary (in the case that a decision boundary is not a plane, close to the tangent of the boundary) -- we may identify them by looking at vectors of similar direction but have different $\phi(x')$ output when added to $x'$. Then we look at the leftover random vectors to converge an estimation of the boundary like demoed in [\figurename{\ \ref{hsj_grad}}].
+
+
+\begin{figure}[H]
+    \centering
+    \includegraphics[width = 0.6\textwidth]{{fig/hsj_grad.png}}
+    \caption{Using random vectors to estimate boundary \protect{\cite{cite:hsj_talk}}}
+    \label{hsj_grad}
+\end{figure}
+
+Thus, when we find the minimum $x'$ to $x$ with $S(x') > 0$, a black box attack is completed.
+
 \paragraph{Algorithm Implementation}
+
+Again, I implemented \ilc{HSJ} with the help of \ilc{ART}\cite{cite:art} (which has dependency to \ilc{Tensorflow} and \ilc{Keras}), wehere \ilc{ART} is a open-source \ilc{Python} library. Since I have no extension for this method, the activation method is simply:
+
+\begin{lstlisting}
+attacker = HopSkipJump(classifier=classifier, targeted=False, norm=np.inf, max_iter=32, max_eval=100, init_eval=10)
+attacker = HopSkipJump(classifier=classifier, targeted=False, norm=np.inf, max_iter=64, max_eval=1000, init_eval=100) # Close to authors' recommended setting
+x_test_adv = attacker.generate(x_test[:adv_num])
+\end{lstlisting}
+
+and the workflow remain the same as Section \ref{fgsm_imp}. The algorithm has pretty much two aspects: \ilc{binary searches}, and gradient estimation
+
+For the former part, the idea is to generate pertubation in the midpoint of $x$ and $x'$, and applying  \ilc{binary searches} to get the $x^k$ and $x^{k+1}$ where $\phi(x^k) = \phi(x_{\text{target}})$ and $\phi(x^{k+1}) \neq \phi(x_{\text{target}})$, then we make $x^k$ to be the final midpoint of these searches. For the latter part, we simply generate pertubation of $x' + u_b$, and depending on the $\phi(x' + u_b)$, we add or minius all pertubation together to be the estimated gradient.
+
 \paragraph{Experiments and Evaluation}
+
+\ilc{HSJ} is the most computationally-heavy algorithm amoung our group's implementations, and thus most experiments done on \ilc{HSJ} will be present and discuss in Section \ref{attack_algo}. However, we notice the authors are using a rather aggressive params setting of \ilc{max\_iter=64, max\_eval=10000, init\_eval=100}, assuming the high \ilc{max\_eval} is to evalaute more random vectors along the boundary. We have tested \ilc{HSJ Rec Params} (\ilc{max\_iter=64, max\_eval=1000, init\_eval=100}) against \ilc{HSJ Fast Params} (\ilc{max\_iter=32, max\_eval=100, init\_eval=10}) and it seems they have very similar performance as demonstrated in [\figurename{\ \ref{hsj_exp}}]
+
+
+\begin{figure}[H]
+    \centering
+    \includegraphics[width = 0.8\textwidth]{{fig/hsj_exp.png}}
+    \caption{\ilc{HSJ} running with recommended and fast params setting on \textit{MINIST}}
+    \label{hsj_exp}
+\end{figure}
 
 
 \subsubsection{\ilc{Feature Collision}}
-\paragraph{Algorithm Intuition}
 
+\ilc{Feature Collision}\cite{cite:fc_paper} is an algorithm I read and understood but did not actually implement, mostly due to time constraint. \ilc{Feature Collision} is a \textit{posioning} attack algorithm, which is usually considered to be impartical as it is highly unlikely for an attack to have access to the training phase of a model.
+
+
+But \ilc{Feature Collision} is implemented with concept of \ilc{clean label}, as not the attack but a third-party will label the ``poisoned'' image. This increases the likelihood of the poisoned image entering the training set of the model as it is commom practice to scrape internet for training data.
+
+So, in a general term, \ilc{Feature Collision} \textit{collides} the feature between a base class to a target class, making adversarial example that carrying the semantic the base class but full of the features of the target class. Since it is indistinguishable to human eyes, if it enters to training set of a model, the result can be catastrophic like demoed in [\figurename{\ \ref{fc_eff}}].
+
+
+\begin{figure}[H]
+    \centering
+    \includegraphics[width = 0.8\textwidth]{{fig/fc_eff.png}}
+    \caption{The result of \ilc{Feature Collision} \protect{\cite{cite:fc_paper}}}
+    \label{fc_eff}
+\end{figure}
+
+In the paper, the author also emphasis the effectiveness of \ilc{Feature Collision} as normally posioning attack will require control of labels or even having adversarial examples in to most or every batch of images, but \ilc{Feature Collision} complete an effective attack even with just one adversarial example -- a legitment \textit{one-shot kill} as named by the authors.
 
 \subsection{Minyang Tie's Individual Report}
 
