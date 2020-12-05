@@ -9,19 +9,11 @@
 \DeclareMathOperator*{\argmin}{arg\,min}
 \DeclareMathOperator*{\argmax}{arg\,max}
 
-\usepackage[
-backend=biber,
-style=alphabetic,
-citestyle=authoryear
-]{biblatex}
-
-\addbibresource{./bib/moosavidezfooli.bib} %Imports bibliography file
-
 \graphicspath{ {./fig/} }
 
 \begin{document}
 
-The main algorithm that I researched for this report was DeepFool, which is an optimized attack method on data for deep neural network classifiers. This technique was first proposed by Moosavi-Dezfooli et al. in their paper, \emph{DeepFool: a simple and accurate method to fool deep neural networks} (moosavidezfooli.bib). The primary attack vector of DeepFool is to introduce instability into a classifier through adversarial perturbations, where minor changes are made to data samples that result in a classifier giving an incorrect output. What distinguishes DeepFool, however, is that it optimizes its attack to have the minimal amount of perturbations applied to the sample data that still tricks a classifier.
+The main algorithm that I researched for this report was DeepFool, which is an optimized attack method on data for deep neural network classifiers. This technique was first proposed by Moosavi-Dezfooli et al. in their paper, \emph{DeepFool: a simple and accurate method to fool deep neural networks}. \cite{DBLP:conf/cvpr/Moosavi-Dezfooli16} The primary attack vector of DeepFool is to introduce instability into a classifier through adversarial perturbations, where minor changes are made to data samples that result in a classifier giving an incorrect output. What distinguishes DeepFool, however, is that it optimizes its attack to have the minimal amount of perturbations applied to the sample data that still tricks a classifier.
 
 \begin{wrapfigure}{r}{0.25\textwidth} %this figure will be at the right
 	\centering
@@ -29,7 +21,7 @@ The main algorithm that I researched for this report was DeepFool, which is an o
 	\caption{\label{fig:Figure 1}Base image (top row). Image perturbed and perturbations by DeepFool (middle row). Image perturbed and perturbations by fast gradient sign method (bottom row).}
 \end{wrapfigure}
 
-Adversarial perturbation has seen extensive research outside of DeepFool. First thoroughly explored by Szegedy et al. in 2014, existing research aims to approximate the minimum number of perturbations required to fool a deep neural network classifier (szegedy.bib). However, their optimization method does not scale to larger datasets. These techniques are often overly-expensive in terms of computation, such as the method Nyugen et al. developed to render a data sample unrecognizable to a human, but convince a classifier to classify it with confidence (nyugen.bib). Other researchers created a fast gradient step method (goodfellow.bib), which quickly calculate approximately optimal perturbations, but this estimation can be considerably different from a more optimal solution. Figure 1 demonstrates the perturbations created by DeepFool and those created by the previously-mentioned 'fast gradient step' method. The image was originally classified as a whale, and the noise maps in the right column are the perturbations applied to that image in order for the classifier to declare the augmented image as a turtle instead. It can be clearly observed that DeepFool's perturbations are more minimal in quantity and in their affect on the base image, and was able to achieve the same desired misclassification as the gradient step method.
+Adversarial perturbation has seen extensive research outside of DeepFool. First thoroughly explored by Szegedy et al. in 2014, existing research aims to approximate the minimum number of perturbations required to fool a deep neural network classifier. \cite{DBLP:journals/corr/SzegedyZSBEGF13} However, their optimization method does not scale to larger datasets. These techniques are often overly-expensive in terms of computation, such as the method Nyugen et al. developed to render a data sample unrecognizable to a human, but convince a classifier to classify it with confidence. \cite{DBLP:journals/corr/NguyenYC14} Other researchers created a fast gradient step method \cite{DBLP:journals/corr/GoodfellowSS14}, which quickly calculate approximately optimal perturbations, but this estimation can be considerably different from a more optimal solution. Figure 1 demonstrates the perturbations created by DeepFool and those created by the previously-mentioned 'fast gradient step' method. The image was originally classified as a whale, and the noise maps in the right column are the perturbations applied to that image in order for the classifier to declare the augmented image as a turtle instead. It can be clearly observed that DeepFool's perturbations are more minimal in quantity and in their affect on the base image, and was able to achieve the same desired misclassification as the gradient step method.
 
 DeepFool's optimized approach to finding the minimal quantity of perturbations stems from the concept of what a perturbation is. First, they defined an adversarial perturbation as the smallest alteration \textit{\textbf{r}} that can change a classifier's estimated label $\hat{k}(x)$ to be the following (ST means "subject to"):
 
@@ -59,7 +51,7 @@ The DeepFool adversarial perturbation optimization method was then expanded to c
 
 This equality is similar in terms of geometric distance to that of the distance between some point, $x_0$, and the complement of a polyhedron $P$ that contains it. In this situation, polyhedron $P$ represents the geometric space equivalent to the classification estimator output $\hat{k}(x_0)$. This problem was solved for with binary classification, however, and that solution can be modified to cover this problem. By letting $\hat{l}(x_0)$ represent the nearest hyperplane to the boundary of polyhedron $P$, the minimum amount of perturbations can then be calculated as a vector that projects the label onto that hyperplane. The final implementation of this derivation can be seen in Figure 2, which depicts the full mutliclass algorithm for DeepFool.
 
-The second algorithm that I researched, One Pixel Attack from Vargas et al.'s paper \emph{One Pixel Attack for Fooling Deep Neural Networks}, approched the same concept as DeepFool, but from a much different perspective (vargas.bib). While the DeepFool attack method would optimize how many perturbations it needs to an image in order to deceive a classifier, One Pixel Attack aims to determine a single pixel in an image that, when changed, would most likely fool the classifier. Additionally, the One Pixel Attack is a semi-black-box attack, where the only data it needs from the classifier are the output probability labels. This stands in contrast to the DeepFool attack, which needed access to the classifiers internal functions to best counter them. By operating as more of a black-box, where the internal mechanisms of the underlying classifier remain hidden, the One Pixel Attack becomes more versatile, as those data points are easier to access.
+The second algorithm that I researched, One Pixel Attack from Vargas et al.'s paper \emph{One Pixel Attack for Fooling Deep Neural Networks}, approched the same concept as DeepFool, but from a much different perspective. \cite{DBLP:journals/tec/SuVS19} While the DeepFool attack method would optimize how many perturbations it needs to an image in order to deceive a classifier, One Pixel Attack aims to determine a single pixel in an image that, when changed, would most likely fool the classifier. Additionally, the One Pixel Attack is a semi-black-box attack, where the only data it needs from the classifier are the output probability labels. This stands in contrast to the DeepFool attack, which needed access to the classifiers internal functions to best counter them. By operating as more of a black-box, where the internal mechanisms of the underlying classifier remain hidden, the One Pixel Attack becomes more versatile, as those data points are easier to access.
 
 As the amount of information available to the One Pixel Attack is limited to its assumptions about the input data and the existing probability labels. Vargas et al. begin with the problem that for an $n-dimensional$ input, the flattened array of pixels $x$ is the original image that would be properly classified. They then propose that the probability of that input image belonging to an arbitrary class $k$ be $f_k(x)$. From here, the researchers create a new $n-dimensional$ vector, which holds adversarial perturbations that are defined by:
 
@@ -134,8 +126,6 @@ With regards to the performance difference between the DeepFool (DF1) and Dynami
 
 With regards to the One Pixel Attack algorithm, this implementation's results are consistent with those of the original authors. Vargas et al. recorded a decrease in accuracy by 16.89\%, from 85.6\% to 68.71\% after a non-targeted, one-pixel attack. This implementation caused the associated classifier to drop its accuracy by, on average, 19.7\%. Considering that the initial accuracy wasn't as high as that recorded in Vargas et. al, it is likely that this instance's provided classifier was not as strong, and thus more prone to failure. Nevertheless, these results do appear to reconcile with the established literature.
 
-
-
+\bibliography{dcm101}
 \printbibliography
-
 \end{document}
