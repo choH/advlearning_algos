@@ -46,27 +46,6 @@
 \date{Due and submitted on 12/04/2020 \\ Fall 2020, Dr. Ray}
 \maketitle
 
-\renewcommand{\abstractname}{Contributions}
-\begin{abstract}
-We as a group of five have looked into the field of adversarial machine learning and specifically investigated several algorithms regarding aspects of attack (evasion, poisoning) and defense (detector, transformer, pre-process). Inside the group, overall contribution are as following:
-\begin{itemize}
-    \item Henry:
-    \begin{itemize}
-        \item Read 3 papers on algorithms.
-        \item Implemented 2 algorithms (\ilc{FGSM} and \ilc{Hop Skip Jump}) with 3 extensions.
-        \item Piplined attack algorithms to work with 2 datasets, collected almost all (7 algorithms/useable extensions) attack experiments data (except \ilc{backdoor} and \ilc{one pixel attack}) for the comparative evaluations.
-        \item Piplined and collected experiments data for \ilc{FGSM, Hop Skip Jump, DeepFool} attacks (and their useable extensions) against \ilc{Detector} and \ilc{Spatial Smoothing} defenses on 2 datasets.
-        \item Implemented $L_2$ and $L_{\infty}$ \textit{perturbation budget} to aid comparative evaluation.
-        \item Wrote \textbf{Introduction and Significance} section.
-        \item Plotted all graphs and charts in \textbf{Comparative Study and Discussion}.
-        \item Helped group move forward by making technical decisions, distributing works, setting up deadlines, and facilitating coordination between groupmates.
-    \end{itemize}
-    \item Minyang:
-    \item Alex:
-    \item Austin:
-    \item David:
-\end{itemize}
-\end{abstract}
 
 
 
@@ -80,14 +59,73 @@ We as a group of five have looked into the field of adversarial machine learning
 
 \section{Introduction and Significance}
 
+In the field of machine learning, it if often taken for granted that the testing examples have no malicious intent -- as it if something is labled to be a \ilc{dog}, it will indeed look like a \ilc{dog}. However, with the growing popularity of machine learning, robustness against adversarial attacks has been a more and more important metric. Adversarial machine learning is the field studying how to attack a model to make it output incorrect results (e.g., false predictions) in different stage of the model building, and how to make a model more robust against various kinds of attacks.\newline
+
+Here is a classic example of a successful adversarial attack borrowed from Google \cite{cite:google_fgsm}: by applying the middle pertubation to the original image, a supposely Labrador Retriever, while still looks like a Labrador Retriever, is now misclassified as a Weimaraner.
+
+
+\begin{figure}[H]
+    \centering
+    \includegraphics[width = \textwidth]{{fig/adv_example.png}}
+    \caption{An example of adversarial pertubation resulting successful adversarial attack}
+    \label{adv_example}
+\end{figure}
+
+One explaination\cite{cite:ytb_talk} of why adversarial attack works is because there is a natural distinction between how we read and how machine read into a piece of information. When we human are asked to classify between a \textit{dog} from a \textit{cat}, we know to focus on the ears and snout:
+
+
+\begin{figure}[H]
+    \centering
+    \includegraphics[width = 0.6\textwidth]{{fig/ytb_human.png}}
+    \caption{Human perspective}
+    \label{ytb_human}
+\end{figure}
+
+and we considered the pertubation in [\figurename{\ \ref{adv_example}}] to be meaningless because we cannot digest useful information out of it. But that might not be the case to the ``eyes'' of a machine as it has no knowledge about cats and dogs. To ``translate'' the machine's perspective to ``human terms,'' how machine look at these cat/dig pictures are probably like the following:
+
+\begin{figure}[H]
+    \centering
+    \includegraphics[width = 0.6\textwidth]{{fig/ytb_machine.png}}
+    \caption{Machine perspective}
+    \label{ytb_machine}
+\end{figure}
+
+In fact, a machine might considers the pertubation in [\figurename{\ \ref{adv_example}}] to be more ``informative'' than the features we care about (ears and snout). And since models are set to maximize accuracy as a general goal, it will utilize both features -- both the \textit{robust features} (features that keep being robust after adversarial pertubation), and the \textit{non-robust features} (e.g., some ``noise'' to human):
+
+\begin{figure}[H]
+    \centering
+    \includegraphics[width = 0.6\textwidth]{{fig/ytb_features.png}}
+    \caption{Robust and non-robust features}
+    \label{ytb_features}
+\end{figure}
+
+Thus, if a model's decision is largly base on these non-robust features, we may apply adversarial pertubations to adjust these features and causing the model to output false results. \newline
+
+For this paper in particular, we will look into \textit{evasion attack} (causing the model to output false result by modifying the input), \textit{poisoning attack} (alter the training set of a model to make it produce inaccruate decision boundaries), and some corresponding defense methods against these attacks.
+
+
 \section{Individual Reports}
 
 \subsection{Shaochen (Henry) Zhong's Individual Report}
 \subsubsection{Overview}
 
+I have wholeheartedly lead and contributed to this group projects, below is an itemized list of my contributions. I have inquired Dr. Ray and confirmed they can be considered as ``extra works'' and maybe give me some grade boost. Thanks.
+\begin{itemize}
+    \item Read 3 papers on algorithms.
+    \item Implemented 2 algorithms (\ilc{FGSM} and \ilc{Hop Skip Jump}) with 3 extensions.
+    \item Piplined attack algorithms to work with 2 datasets, collected almost all (7 algorithms/useable extensions) attack experiments data (except \ilc{backdoor} and \ilc{one pixel attack}) for the comparative evaluations.
+    \item Piplined and collected experiments data for \ilc{FGSM, Hop Skip Jump, DeepFool} attacks (and their useable extensions) against \ilc{Detector} and \ilc{Spatial Smoothing} defenses on 2 datasets.
+    \item Implemented $L_2$ and $L_{\infty}$ \textit{perturbation budget} to aid comparative evaluation.
+    \item Wrote \textbf{Introduction and Significance} section.
+    \item Plotted all graphs and charts in \textbf{Comparative Study and Discussion}.
+    \item Helped group move forward by making technical decisions, distributing works, setting up deadlines, and facilitating coordination between groupmates.
+\end{itemize}
 
 \subsubsection{\ilc{Fast Gradient Sign Method}}
 \paragraph{Algorithm Intuition}
+
+\ilc{FGSM} is a \textit{white-box} evasion attack algorithm. Being \text{white-box} meaning the attacker was assumed to have access to the internal of the model,
+
 \paragraph{Algorithm Implementation}
 \paragraph{Experiments}
 \paragraph{Evaluation}
