@@ -109,7 +109,7 @@ For this paper in particular, we will look into \textit{evasion attack} (causing
 \subsection{Shaochen (Henry) Zhong's Individual Report}
 \subsubsection{Overview}
 
-I have wholeheartedly lead and contributed to this group projects, below is an itemized list of my contributions. I have inquired Dr. Ray and confirmed they can be considered as ``extra works'' and maybe give me some grade boost. Thanks.
+I have wholeheartedly lead and contributed to this group project, below is an itemized list of my contributions. I have inquired Dr. Ray and confirmed these can be considered as ``extra works'' and maybe give me some grade boost. Thanks :)
 \begin{itemize}
     \item Read 3 papers on algorithms.
     \item Implemented 2 algorithms (\ilc{FGSM} and \ilc{Hop Skip Jump}) with 3 extensions.
@@ -124,7 +124,15 @@ I have wholeheartedly lead and contributed to this group projects, below is an i
 \subsubsection{\ilc{Fast Gradient Sign Method}}
 \paragraph{Algorithm Intuition}
 
-\ilc{FGSM} is a \textit{white-box} evasion attack algorithm. Being \text{white-box} meaning the attacker was assumed to have access to the internal of the model,
+\ilc{FGSM} is a \textit{white-box} evasion attack algorithm. Being \text{white-box} means the attacker is assumed to have access to the internal of the model: the structure, the parameters... basically each and every details of the model is considered to be known.
+
+In this case, we mostly care about the \ilc{loss} function of the model. The intuition of \ilc{FGSM} is elegent and effective -- in short: gradient ascent. Assume we have an benign example $x$ with label $y$, and we are trying to make it adversarial by letting the model classify $x_{\text{adv}}$ to be not $y$. We apply the following pertubation on $x$ to achieve an $x_{\text{adv}}$
+
+\begin{equation}
+    x_{\text{adv}} = x + \epsilon \cdot \textit{sign}(\nabla_x J(\theta, x, y))
+\end{equation}
+
+where $J$ is the \ilc{loss} function and $\theta$ is the parameters of the model. It is clearly to tell that by finding a proper amount of $\epsilon$, we know $x_{\text{adv}}$ will eventually cross the $y-\neg y$
 
 \paragraph{Algorithm Implementation}
 \paragraph{Experiments}
