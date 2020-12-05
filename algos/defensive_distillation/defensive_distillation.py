@@ -1,5 +1,5 @@
 # Defensive Distillation implemenation for adversarial learning group
-# 
+# Author: Austin Keppers
 
 import tensorflow as tf
 import numpy as np
@@ -135,7 +135,7 @@ def get_soft_labels(model, dataset):
 
     return model.predict(dataset.images, verbose=1)
 
-def filter_soft_data_by_result(soft_dataset, hard_labels, add_wrong_predictions=False):
+def filter_soft_data_by_result(soft_dataset, hard_labels):
     """
     Take predictions and filter out examples that were misclassified
     If add_wrong_predictions is set to True will add these back in with hard labels
@@ -147,20 +147,7 @@ def filter_soft_data_by_result(soft_dataset, hard_labels, add_wrong_predictions=
     correct_predictions = (hard_labels == predictions)
     wrong_predictions = (hard_labels != predictions)
 
-    if not add_wrong_predictions:
-        return Dataset(soft_dataset.images[correct_predictions], soft_dataset.labels[correct_predictions], False)
-    else:
-
-        # Separate correct and incorrect predictions
-        soft_images = soft_data.images[correct_predictions]
-        hard_images = soft_data.images[wrong_predictions]
-        soft_labels = soft_data.labels[correct_predictions]
-        hard_labels = hard_labels[wrong_predictions]
-
-        # Combine images and labels back together
-        images = soft_images.append(hard_images)
-        labels = soft_labels.append(hard_labels)
-        return Dataset(images, labels, False)
+    return Dataset(soft_dataset.images[correct_predictions], soft_dataset.labels[correct_predictions], False)
 
 
 def convert_to_one_hot(labels, num_classes):
@@ -169,7 +156,7 @@ def convert_to_one_hot(labels, num_classes):
     """
     return np.eye(num_classes)[labels.reshape(-1)]
 
-def get_defensive_distilled_classifier(parameters, raw_training_data, raw_test_data, remove_incorrectly_predicted, replace_with_hard_labels=False):
+def get_defensive_distilled_classifier(parameters, raw_training_data, raw_test_data, remove_incorrectly_predicted):
     """
     Train a distilled classifier
     First trains a classifier on hard labels and then a classifier on soft labels
@@ -177,7 +164,6 @@ def get_defensive_distilled_classifier(parameters, raw_training_data, raw_test_d
     parameters are the model parameters loaded form a file
     raw training data and raw test data are tuples of numpy arrays of images and then labels
     remove_incorrectly_predicted will remove examples the first classifier predicts incorrectly from the training set for the second
-    replace_with_hard_labels if set to True will add these examples back in but with hard labels
     """
 
     # Creat data sets
@@ -193,7 +179,7 @@ def get_defensive_distilled_classifier(parameters, raw_training_data, raw_test_d
     soft_labels = get_soft_labels(model, training_dataset)
     distilled_training_set = Dataset(raw_training_data[0], soft_labels)
     if remove_incorrectly_predicted:    # Alter the incorrectly predicted classes if it is selected
-        distilled_training_set = filter_soft_data_by_result(distilled_training_set, training_dataset.labels, replace_with_hard_labels)
+        distilled_training_set = filter_soft_data_by_result(distilled_training_set, training_dataset.labels)
     distilled_test_set = Dataset(raw_test_data[0], convert_to_one_hot(raw_test_data[1], 10))
     train_model(distilled_model, distilled_training_set, distilled_test_set, parameters, True)
 
@@ -206,11 +192,8 @@ if __name__ == '__main__':
         disable_eager_execution()
         parameters_path = argv[1]
         remove_incorrectly_predicted = False
-        replace_with_hard_labels = False
         if len(argv) >= 3:
             remove_incorrectly_predicted = bool(argv[2])
-            if len(agrv) >= 4:
-                replace_with_hard_labels = bool(argv[2])
         parameters = None
 
         # Read parameters from file
@@ -219,7 +202,7 @@ if __name__ == '__main__':
 
         # Get classifiers, wrap as ART classifiers
         raw_training_data, raw_test_data = get_dataset(parameters['dataset'])
-        classifier, distilled_classifier = get_defensive_distilled_classifier(parameters, raw_training_data, raw_test_data, remove_incorrectly_predicted, replace_with_hard_labels)
+        classifier, distilled_classifier = get_defensive_distilled_classifier(parameters, raw_training_data, raw_test_data, remove_incorrectly_predicted)
         test_dataset = Dataset(raw_test_data[0], raw_test_data[1])
         distilled_test_set = Dataset(raw_test_data[0], convert_to_one_hot(raw_test_data[1], 10))
         art_classifier = KerasClassifier(model=classifier, clip_values=(0, 1), use_logits=False)
